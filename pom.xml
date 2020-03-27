@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>projet-isa-devops-20-team-b-20-drone-delivery</artifactId>
+        <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
+        <version>1.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>projet-isa-devops-20-team-b-20-schedule-component</artifactId>
+    <version>1.1-SNAPSHOT</version>
+
+    <dependencies>
+        <dependency>
+            <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
+            <artifactId>projet-isa-devops-20-team-b-20-entities</artifactId>
+            <version>1.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
+            <artifactId>projet-isa-devops-20-team-b-20-warehouse-component</artifactId>
+            <version>1.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+
+</project>
