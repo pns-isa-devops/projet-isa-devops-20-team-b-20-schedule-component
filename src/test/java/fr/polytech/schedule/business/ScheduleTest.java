@@ -55,26 +55,26 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void dateIsAvailableTestWithOneDeliveryBefore() {
+    public void dateIsAvailableTestWithOneDeliveryBefore() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), new Delivery());
         assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15)));
     }
 
     @Test
-    public void dateIsAvailableTestWithOneDeliveryAtSameTime() {
+    public void dateIsAvailableTestWithOneDeliveryAtSameTime() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15)));
     }
 
     @Test
     public void dateIsAvailableTestWithOneTimeSlotBefore() {
-        schedule.createTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), TimeState.CHARGING);
+        schedule.createChargingTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0));
         assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15)));
     }
 
     @Test
     public void dateIsAvailableTestWithOneTimeSlotAtSameTime() {
-        schedule.createTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), TimeState.CHARGING);
+        schedule.createChargingTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15));
         assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15)));
     }
 
@@ -87,7 +87,7 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void getTimeSlotsWithOnlyDeliveriesWithDeliveries() {
+    public void getTimeSlotsWithOnlyDeliveriesWithDeliveries() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), new Delivery());
@@ -105,9 +105,9 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void getTimeSlotsWithOnlyDeliveriesWithDeliveryAndOther() {
-        schedule.createTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), TimeState.REVIEW);
-        schedule.createTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), TimeState.CHARGING);
+    public void getTimeSlotsWithOnlyDeliveriesWithDeliveryAndOther() throws IllegalAccessException {
+        schedule.createChargingTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0));
+        schedule.createChargingTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30));
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
 
         assertEquals(1, schedule.getTimeSlotsWithOnlyDeliveries().size());
@@ -117,7 +117,7 @@ public class ScheduleTest extends AbstractScheduleTest {
      * Tests getTimeSlotsWithOnlyDeliveries
      */
     @Test
-    public void setChargingTimeSlotsTestWithOneDeliveries() {
+    public void setChargingTimeSlotsTestWithOneDeliveries() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries();
         assertEquals(1, ts.size());
@@ -127,7 +127,7 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void setChargingTimeSlotsTestWithTwoDeliveries1() {
+    public void setChargingTimeSlotsTestWithTwoDeliveries1() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries();
@@ -140,7 +140,7 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void setChargingTimeSlotsTestWithTwoDeliveries2() {
+    public void setChargingTimeSlotsTestWithTwoDeliveries2() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), new Delivery());
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries();
@@ -156,7 +156,7 @@ public class ScheduleTest extends AbstractScheduleTest {
      * Tests getTimeSlotsWithOnlyDeliveries
      */
     @Test
-    public void setUnavailableTimeSlotsTestsWithTwoDeliveries1() {
+    public void setUnavailableTimeSlotsTestsWithTwoDeliveries1() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), new Delivery());
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries();
@@ -171,7 +171,7 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     @Test
-    public void setUnavailableTimeSlotsTestsWithTwoDeliveries2() {
+    public void setUnavailableTimeSlotsTestsWithTwoDeliveries2() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), new Delivery());
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), new Delivery());
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries();

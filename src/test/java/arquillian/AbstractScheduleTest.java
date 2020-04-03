@@ -8,7 +8,7 @@ import org.jboss.shrinkwrap.resolver.api.maven.Maven;
 import fr.polytech.schedule.components.DeliveryOrganizer;
 
 /**
- * AbstractSheduleTest
+ * AbstractScheduleTest
  */
 public class AbstractScheduleTest {
 

@@ -5,8 +5,10 @@ import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
-import javax.ejb.LocalBean;
 import javax.ejb.Stateful;
+import javax.inject.Named;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
@@ -14,8 +16,8 @@ import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
 import fr.polytech.warehouse.components.DeliveryModifier;
 
-@LocalBean
 @Stateful
+@Named("schedule")
 public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     @EJB
@@ -23,6 +25,9 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     private Drone drone;
     public final static int DURING_15_MIN = 15 * 60 * 1000;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public Delivery getNextDelivery() {
@@ -44,7 +49,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         // Stage 2 : Set the timeslot
 
-        createDeliveryTimeSlot(date, delivery);
+        try {
+            createDeliveryTimeSlot(date, delivery);
+        } catch (IllegalAccessException e) {
+            return false;
+        }
 
         // Stage 3 : Remove CHARGING and UNAVAILABLE slots in order to obtain only
         // DELIVERY timeslots
@@ -94,34 +103,37 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param date
      * @param delivery
      */
-    public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery) {
-        TimeSlot timeslot = new TimeSlot();
-        timeslot.setDelivery(delivery);
-        timeslot.setDate(date);
-        timeslot.setState(TimeState.DELIVERY);
-        drone.getTimeSlots().add(timeslot);
+    public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery) throws IllegalAccessException {
+        if(!this.dateIsAvailable(date)){
+            throw new IllegalAccessException("The time slot already has a delivery.");
+        }
+        TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
+        timeSlot.setDelivery(delivery);
+        entityManager.persist(timeSlot);
+        drone.getTimeSlots().add(timeSlot);
     }
 
     /**
-     * Create a time slot
+     * Creates a charging time slot.
      */
-    public void createTimeSlot(GregorianCalendar date, TimeState state) {
-        TimeSlot timeslot = new TimeSlot();
-        timeslot.setDate(date);
-        timeslot.setState(state);
-        drone.getTimeSlots().add(timeslot);
+    public void createChargingTimeSlot(GregorianCalendar date) {
+        TimeSlot timeSlot = new TimeSlot();
+        timeSlot.setDate(date);
+        timeSlot.setState(TimeState.CHARGING);
+        entityManager.persist(timeSlot);
+        drone.getTimeSlots().add(timeSlot);
     }
 
     /**
      * Take a set of time slot and add CHARGING time slots where the drone needs
      * charge
      *
-     * @param timeslots
+     * @param timeSlots
      */
-    public void setChargingTimeSlots(Set<TimeSlot> timeslots) {
+    public void setChargingTimeSlots(Set<TimeSlot> timeSlots) {
 
         int count = 0;
-        for (TimeSlot ts : timeslots) {
+        for (TimeSlot ts : timeSlots) {
             if (ts.getState() == TimeState.DELIVERY) {
                 count++;
                 if (count % 2 == 0) {
@@ -130,7 +142,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                     c.setTimeInMillis(ts.getDate().getTimeInMillis() + DURING_15_MIN);
                     chargingTs.setDate(c);
                     chargingTs.setState(TimeState.CHARGING);
-                    timeslots.add(chargingTs);
+                    timeSlots.add(chargingTs);
                 }
             }
         }
