@@ -1,10 +1,6 @@
 package fr.polytech.schedule.components;
 
-import java.util.ArrayList;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -56,6 +52,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         Set<TimeSlot> timeslots = getTimeSlotsWithOnlyDeliveries();
 
         // Stage 3.1 : Set back the CHARGING time slots
+        // TODO : Remove bug concurrent access
         setChargingTimeSlots(timeslots);
         // Stage 3.2 : Set back UNAVAILABLE time slots
         setUnavailableTimeSlots(timeslots);
@@ -85,7 +82,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      */
     public boolean dateIsAvailable(GregorianCalendar date) {
         for (TimeSlot ts : drone.getTimeSlots()) {
-            if (ts.getDate().equals(date))
+            if(ts.getDate().get(Calendar.HOUR_OF_DAY) == date.get(Calendar.HOUR_OF_DAY) && ts.getDate().get(Calendar.MINUTE) == date.get(Calendar.MINUTE) )
                 return false;
         }
         return true;
