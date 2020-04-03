@@ -12,7 +12,7 @@ pipeline{
             steps {
                 configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
 					echo "Compile module"
-					sh "mvn -s $MAVEN_SETTINGS -N deploy"
+					sh "mvn -s $MAVEN_SETTINGS clean compile"
                 }
             }
         }
