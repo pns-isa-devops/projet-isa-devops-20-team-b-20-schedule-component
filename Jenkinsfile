@@ -11,28 +11,24 @@ pipeline{
         stage("Compile") {
             steps {
                 configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
-					dir('./projet-isa-devops-20-team-b-20-schedule-component/') {
-						echo "Compile module"
-						sh "mvn -s $MAVEN_SETTINGS -N deploy"
-					}
+					echo "Compile module"
+					sh "mvn -s $MAVEN_SETTINGS -N deploy"
                 }
             }
         }
 		stage("Tests") {
 			steps {
-				dir("./projet-isa-devops-20-team-b-20-schedule-component/") {
-					echo "Unit tests module"
-					sh "mvn test"
-				}
+				echo "Unit tests module"
+				sh "mvn test"
 			}
 		}
 		stage("Deploy") {
-			configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
-					dir("./projet-isa-devops-20-team-b-20-schedule-component/") {
+			steps {
+				configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
 						echo "Deployment into artifactory"
 						sh "mvn -s $MAVEN_SETTINGS deploy"
-					}
 				}
+			}
 		}
     }
     post{
