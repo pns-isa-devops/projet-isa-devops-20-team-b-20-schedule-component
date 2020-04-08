@@ -22,6 +22,12 @@ pipeline{
 				sh "mvn test"
 			}
 		}
+        stage('Mutations') {
+            steps {
+                echo 'PiTest Mutation'
+                sh 'mvn org.pitest:pitest-maven:mutationCoverage'
+            }
+        }
 		stage("Deploy") {
 			steps {
 				configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
@@ -30,8 +36,29 @@ pipeline{
 				}
 			}
 		}
+        stage('Sonarqube') {
+            steps {
+                withSonarQubeEnv('Sonarqube_env') {
+                    echo 'Sonar Analysis'
+                    sh 'mvn package sonar:sonar -Dsonar.pitest.mode=reuseReport'
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate true
+                }
+                echo 'passed'
+            }
+        }
     }
     post{
+        always {
+            archiveArtifacts artifacts: 'target/**/*', fingerprint: true
+            junit 'target/surefire-reports/*.xml'
+            echo '======== pipeline archived ========'
+        }
         success {
             slackSend(
             channel: 'projet-isa-devops-ci',
