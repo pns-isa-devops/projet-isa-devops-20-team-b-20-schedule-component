@@ -1,13 +1,34 @@
+def update = ""
+def gate = ""
 pipeline{
     agent any
     options {
         disableConcurrentBuilds()
         timeout(time: 1, unit: "HOURS")
     }
+    parameters {
+        string(name: 'DEPENDENCY', defaultValue: '', description: 'dependency to update')
+        choice(name: 'VERSION', choices: ['none', 'snapshot', 'release'], description: 'type of version to update')
+    }
     environment {
         MVN_SETTING_PROVIDER = "3ec57b41-efe6-4628-a6c7-8be5f1c26d77"
+        COMPONENT = "projet-isa-devops-20-team-b-20-schedule-component"
     }
     stages {
+        stage('snapshot version') {
+            when {
+                allOf {
+                    expression { params.DEPENDENCY != '' }
+                    expression { params.VERSION == 'snapshot' }
+                }
+            }
+            steps {
+                sh "mvn versions:use-latest-versions -DallowSnapshots=true -DprocessParent=false -Dincludes=fr.unice.polytech.isadevops.dronedelivery:${params.DEPENDENCY}"
+                script {
+                    update = "\n - Component need fix before update : ${params.DEPENDENCY}[latest snapshot]"
+                }
+            }
+        }
         stage("Compile") {
             steps {
                 configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
@@ -46,10 +67,57 @@ pipeline{
         }
         stage('Quality Gate') {
             steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate true
+                catchError(buildResult: "SUCCESS", stageResult: "FAILURE") {
+                    timeout(time: 1, unit: "HOURS") {
+                        waitForQualityGate true
+                    }
                 }
-                echo 'passed'
+            }
+            post{
+                success {
+                    script {
+                        gate = "\n - Quality gate was successful"
+                    }
+                }
+                failure {
+                    script {
+                        gate = "\n - Quality gate was failed"
+                    }
+                }
+            }
+        }
+        stage('Update snapshot dependencies') {
+            when {
+                allOf {
+                    not { branch 'master' }
+                    expression { params.DEPENDENCY == '' }
+                }
+            }
+            steps {
+                script {
+                    def components = ['projet-isa-devops-20-team-b-20-web-service']
+                    for (int i = 0; i < components.size(); ++i) {
+                        echo "Check dependency on ${components[i]}"
+                        build job: "${components[i]}/develop",
+                            parameters: [string(name: 'DEPENDENCY', value: "${COMPONENT}"),
+                            string(name: 'VERSION', value: 'snapshot')],
+                            propagate: false,
+                            wait: false
+                    }
+                }
+            }
+        }
+        stage('Commit with new version') {
+            when {
+                allOf {
+                    expression { params.DEPENDENCY != '' }
+                    expression { params.VERSION == 'snapshot' }
+                }
+            }
+            steps {
+                script {
+                    update = "\n - Component can be update : ${params.DEPENDENCY}[latest snapshot]"
+                }
             }
         }
     }
@@ -66,9 +134,10 @@ pipeline{
             failOnError: true,
             color: 'good',
             token: env.SLACK_TOKEN,
-            message: 'Job: ' + env.JOB_NAME + ' with buildnumber ' + env.BUILD_NUMBER + ' was successful',
+            message: 'Job: ' + env.JOB_NAME + ' with buildnumber ' + env.BUILD_NUMBER + ' was successful' + update + gate,
             baseUrl: env.SLACK_WEBHOOK)
             echo "======== pipeline executed successfully ========"
+            sh 'mvn versions:commit'
         }
         failure {
             slackSend(
@@ -80,6 +149,7 @@ pipeline{
             message: 'Job: ' + env.JOB_NAME + ' with buildnumber ' + env.BUILD_NUMBER + ' was failed',
             baseUrl: env.SLACK_WEBHOOK)
             echo "======== pipeline execution failed========"
+            sh 'mvn versions:revert'
         }
     }
 }
