@@ -14,7 +14,7 @@ pipeline{
     environment {
         MVN_SETTING_PROVIDER = "3ec57b41-efe6-4628-a6c7-8be5f1c26d77"
         COMPONENT = "projet-isa-devops-20-team-b-20-schedule-component"
-        NEW_VERSION = """${sh(
+        VERSION = """${sh(
                             returnStdout: true,
                             script: 'mvn help:evaluate -Dexpression=versions.${DEPENDENCY} -q -DforceStdout'
                         )}"""
@@ -23,7 +23,7 @@ pipeline{
         stage('New Version To check') {
             when {
                 allOf {
-                    expression { params.UPDATE_VERSION != NEW_VERSION }
+                    expression { params.UPDATE_VERSION != VERSION }
                 }
             }
             stages {
@@ -37,7 +37,7 @@ pipeline{
                     steps {
                         sh "mvn versions:use-latest-versions -DallowSnapshots=true -DprocessParent=false -Dincludes=fr.unice.polytech.isadevops.dronedelivery:${params.DEPENDENCY}"
                         script {
-                            update = "\n - Component need fix before update : ${params.DEPENDENCY}\n\t${params.UPDATE_VERSION} -> ${NEW_VERSION}"
+                            update = "\n - Component need fix before update : ${params.DEPENDENCY}\n\t${params.UPDATE_VERSION} -> ${VERSION}"
                         }
                     }
                 }
@@ -126,26 +126,32 @@ pipeline{
                         }
                     }
                 }
-                stage('Commit with new version') {
+                stage('Notify with new version') {
                     when {
                         allOf {
                             expression { params.DEPENDENCY != '' }
                             expression { params.TYPE == 'snapshot' }
-                            expression { params.UPDATE_VERSION != NEW_VERSION }
+                            expression { params.UPDATE_VERSION != VERSION }
                         }
                     }
                     steps {
                         script {
-                            update = "\n - Component can be update : ${params.DEPENDENCY}\n\t${params.UPDATE_VERSION} -> ${NEW_VERSION}"
+                            update = "\n - Component can be update : ${params.DEPENDENCY}\n\t${VERSION} -> ${params.UPDATE_VERSION}"
                         }
                     }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'target/**/*', fingerprint: true
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
         stage('No Update') {
             when {
                 allOf {
-                    expression { params.UPDATE_VERSION == NEW_VERSION }
+                    expression { params.UPDATE_VERSION == VERSION }
                 }
             }
             steps {
@@ -157,8 +163,6 @@ pipeline{
     }
     post{
         always {
-            archiveArtifacts artifacts: 'target/**/*', fingerprint: true
-            junit 'target/surefire-reports/*.xml'
             echo '======== pipeline archived ========'
         }
         success {
