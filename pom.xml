@@ -10,16 +10,21 @@
     <artifactId>projet-isa-devops-20-team-b-20-schedule-component</artifactId>
     <version>1.1-SNAPSHOT</version>
 
+    <properties>
+        <versions.projet-isa-devops-20-team-b-20-entities>1.1-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-entities>
+        <versions.projet-isa-devops-20-team-b-20-warehouse-component>1.1-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-warehouse-component>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
             <artifactId>projet-isa-devops-20-team-b-20-entities</artifactId>
-            <version>1.1-SNAPSHOT</version>
+            <version>${versions.projet-isa-devops-20-team-b-20-entities}</version>
         </dependency>
         <dependency>
             <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
             <artifactId>projet-isa-devops-20-team-b-20-warehouse-component</artifactId>
-            <version>1.1-SNAPSHOT</version>
+            <version>${versions.projet-isa-devops-20-team-b-20-warehouse-component}</version>
         </dependency>
     </dependencies>
 
