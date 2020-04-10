@@ -16,24 +16,30 @@ pipeline{
         COMPONENT = "projet-isa-devops-20-team-b-20-schedule-component"
     }
     stages {
-        stage('snapshot version') {
+        stage("Snapshot revision") {
             environment {
-                CURRENT_VERSION = '''${sh(
+                NEW_VERSION = """${sh(
                                     returnStdout: true,
-                                    script: "mvn help:evaluate -Dexpression=versions.${DEPENDENCY} -q -DforceStdout
-                                )}'''
+                                    script: 'mvn help:evaluate -Dexpression=versions.${DEPENDENCY} -q -DforceStdout'
+                                )}"""
             }
             when {
                 allOf {
-                    expression { params.VERSION != CURRENT_VERSION }
                     expression { params.DEPENDENCY != '' }
-                    expression { params.VERSION == 'snapshot' }
+                    expression { params.TYPE == 'snapshot' }
                 }
             }
-            steps {
-                sh "mvn versions:use-latest-versions -DallowSnapshots=true -DprocessParent=false -Dincludes=fr.unice.polytech.isadevops.dronedelivery:${params.DEPENDENCY}"
-                script {
-                    update = "\n - Component need fix before update : ${params.DEPENDENCY}[latest snapshot]"
+            stages {
+                stage("Check Update") {
+                    when {
+                        expression { params.VERSION != NEW_VERSION }
+                    }
+                    steps {
+                        sh "mvn versions:use-latest-versions -DallowSnapshots=true -DprocessParent=false -Dincludes=fr.unice.polytech.isadevops.dronedelivery:${params.DEPENDENCY}"
+                        script {
+                            update = "\n - Component need fix before update : ${params.DEPENDENCY}[latest snapshot]"
+                        }
+                    }
                 }
             }
         }
@@ -96,10 +102,10 @@ pipeline{
         }
         stage('Update snapshot dependencies') {
             environment {
-                CURRENT_VERSION = '''${sh(
+                CURRENT_VERSION = """${sh(
                                     returnStdout: true,
-                                    script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout"
-                                )}'''
+                                    script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout'
+                                )}"""
             }
             when {
                 allOf {
