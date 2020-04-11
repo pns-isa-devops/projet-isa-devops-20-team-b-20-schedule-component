@@ -1,14 +1,23 @@
 package fr.polytech.schedule.components;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
+import javax.ejb.LocalBean;
 import javax.ejb.Stateful;
+import javax.ejb.Stateless;
 import javax.inject.Named;
 import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
@@ -17,17 +26,22 @@ import fr.polytech.entities.TimeState;
 import fr.polytech.warehouse.components.DeliveryModifier;
 
 @Stateful
+@LocalBean
 @Named("schedule")
 public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
+
+    private static final Logger log = Logger.getLogger(Logger.class.getName());
 
     @EJB
     private DeliveryModifier deliveryModifier;
 
-    private Drone drone;
+    private Drone drone = new Drone();
     public final static int DURING_15_MIN = 15 * 60 * 1000;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+
 
     @Override
     public Delivery getNextDelivery() {
@@ -40,6 +54,21 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             return null;
         }
     }
+
+/*    private Optional<Drone> findById(String id) {
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
+        Root<Drone> root = criteria.from(Drone.class);
+        criteria.select(root).where(builder.equal(root.get("deliveryId"), id));
+
+        TypedQuery<Drone> query = entityManager.createQuery(criteria);
+        try {
+            return Optional.of(query.getSingleResult());
+        } catch (NoResultException e) {
+            log.log(Level.FINEST, "No result for [" + id + "]", e);
+            return Optional.empty();
+        }
+    }*/
 
     @Override
     public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) {
@@ -69,6 +98,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         setNewSchedule(drone, timeslots);
 
         delivery.setDrone(drone);
+        entityManager.persist(drone);
 
         return true;
     }
@@ -109,6 +139,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
         timeSlot.setDelivery(delivery);
+        //entityManager.merge(delivery);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
     }
