@@ -23,7 +23,6 @@ import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
 import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
-import fr.polytech.warehouse.components.DeliveryModifier;
 
 @Stateful
 @LocalBean
@@ -32,8 +31,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     private static final Logger log = Logger.getLogger(Logger.class.getName());
 
-    @EJB
-    private DeliveryModifier deliveryModifier;
+//    @EJB
+//    private DeliveryModifier deliveryModifier;
 
     private Drone drone = new Drone();
     public final static int DURING_15_MIN = 15 * 60 * 1000;
@@ -55,7 +54,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
     }
 
-/*    private Optional<Drone> findById(String id) {
+    private Optional<Drone> findById(String id) {
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
         Root<Drone> root = criteria.from(Drone.class);
@@ -68,7 +67,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             log.log(Level.FINEST, "No result for [" + id + "]", e);
             return Optional.empty();
         }
-    }*/
+    }
 
     @Override
     public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) {
@@ -98,7 +97,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         setNewSchedule(drone, timeslots);
 
         delivery.setDrone(drone);
-        entityManager.persist(drone);
 
         return true;
     }
@@ -221,7 +219,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * Init the drone API on localhost
      */
     public void initDrone() {
-        drone = new Drone();
+        drone = new Drone("000");
+        entityManager.persist(drone);
     }
 
     public Drone getDrone() {

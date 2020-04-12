@@ -7,8 +7,9 @@ import fr.polytech.entities.TimeSlot;
 import fr.polytech.schedule.components.DeliveryOrganizer;
 import fr.polytech.schedule.components.DeliveryScheduler;
 import fr.polytech.schedule.components.ScheduleBean;
-import fr.polytech.warehouse.utils.CarrierAPI;
 import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
+import org.jboss.arquillian.transaction.api.annotation.Transactional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,6 +29,7 @@ import static org.junit.Assert.*;
 //import org.junit.runner.RunWith;
 
 @RunWith(Arquillian.class)
+@Transactional(TransactionMode.COMMIT)
 public class ScheduleTest extends AbstractScheduleTest {
 
     @EJB(name = "schedule")
