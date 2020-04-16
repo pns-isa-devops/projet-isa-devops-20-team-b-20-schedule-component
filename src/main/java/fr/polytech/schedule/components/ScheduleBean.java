@@ -34,7 +34,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 //    @EJB
 //    private DeliveryModifier deliveryModifier;
 
-    private Drone drone = new Drone();
+    private Drone drone; // todo delete that...
     public final static int DURING_15_MIN = 15 * 60 * 1000;
 
     @PersistenceContext
