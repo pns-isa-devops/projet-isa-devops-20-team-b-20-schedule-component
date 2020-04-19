@@ -1,5 +1,29 @@
 package fr.polytech.schedule.business;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.Set;
+
+import javax.ejb.EJB;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.UserTransaction;
+
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
+import org.jboss.arquillian.transaction.api.annotation.Transactional;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import arquillian.AbstractScheduleTest;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
@@ -8,30 +32,6 @@ import fr.polytech.entities.TimeSlot;
 import fr.polytech.schedule.components.DeliveryOrganizer;
 import fr.polytech.schedule.components.DeliveryScheduler;
 import fr.polytech.schedule.components.ScheduleBean;
-import fr.polytech.schedule.exception.DroneNotFoundException;
-import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
-import org.jboss.arquillian.transaction.api.annotation.Transactional;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.ejb.EJB;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.UserTransaction;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.junit.Assert.*;
-
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.Test;
-//import org.junit.runner.RunWith;
 
 @RunWith(Arquillian.class)
 @Transactional(TransactionMode.COMMIT)
@@ -52,6 +52,8 @@ public class ScheduleTest extends AbstractScheduleTest {
     @PersistenceContext
     private EntityManager entityManager;
 
+    private Parcel parcel;
+
     private Drone drone;
 
     private Delivery delivery1;
@@ -60,16 +62,10 @@ public class ScheduleTest extends AbstractScheduleTest {
 
     @Before
     public void init() {
-        entityManager.persist(new Drone("000"));
+        this.drone = new Drone("000");
+        entityManager.persist(drone);
 
-        Optional<Drone> d = schedule.findById("000");
-        if (d.isPresent()) {
-            this.drone = d.get();
-        } else {
-            throw new DroneNotFoundException("The drone 000 has not been found.");
-        }
-
-        Parcel parcel = new Parcel("AAAAAAAAA1", "address", "carrier", "Dupond");
+        parcel = new Parcel("AAAAAAAAA1", "address", "carrier", "Dupond");
         entityManager.persist(parcel);
         delivery1 = new Delivery("DDDDDDDDD1");
         delivery1.setParcel(parcel);
@@ -84,41 +80,26 @@ public class ScheduleTest extends AbstractScheduleTest {
 
     @After
     public void cleaningUp() throws Exception {
-        Drone drone;
         utx.begin();
-        //Drone dddd = entityManager.merge(this.drone); //merge does the same thing as find by id
-        //System.out.println("\n-----------------\n\n" + dddd + "\n\n---------------\n");
-        Optional<Drone> d = schedule.findById("000");
-        if (d.isPresent()) {
-            System.out.println("\n-----------------" + d.get() + "\n\n---------------\n");
-            drone = d.get();
-            entityManager.refresh(drone);
-            entityManager.remove(drone);
-        }
-        this.drone = null;
-        utx.commit();
 
-/*      utx.begin();
-        entityManager.merge(delivery1);
+        delivery1 = entityManager.merge(delivery1);
         entityManager.remove(delivery1);
-        delivery1 = null;
-        utx.commit();
-
-        utx.begin();
-        entityManager.merge(delivery2);
+        delivery2 = entityManager.merge(delivery2);
         entityManager.remove(delivery2);
-        delivery2 = null;
-        utx.commit();
-
-        utx.begin();
-        entityManager.merge(delivery3);
+        delivery3 = entityManager.merge(delivery3);
         entityManager.remove(delivery3);
-        delivery3 = null;
-        utx.commit();*/
+
+        parcel = entityManager.merge(parcel);
+        entityManager.remove(parcel);
+
+        drone = entityManager.merge(drone);
+        entityManager.remove(drone);
+
+        utx.commit();
     }
 
-    @Test
     // Fonctionnel
+    @Test
     public void scheduleDeliveryTestWithNothing() {
         assertTrue(true);
         GregorianCalendar c = new GregorianCalendar();
@@ -135,7 +116,6 @@ public class ScheduleTest extends AbstractScheduleTest {
     public void dateIsAvailableTestWithNothing() {
         assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
     }
-
 
     @Test
     public void dateIsAvailableTestWithOneDeliveryBefore() throws IllegalAccessException {
@@ -206,6 +186,7 @@ public class ScheduleTest extends AbstractScheduleTest {
         schedule.setChargingTimeSlots(ts);
         schedule.setNewSchedule(this.drone, ts);
         assertEquals(1, ts.size());
+
     }
 
     @Test
@@ -233,7 +214,6 @@ public class ScheduleTest extends AbstractScheduleTest {
         assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
         assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
     }
-
 
     /**
      * Tests getTimeSlotsWithOnlyDeliveries

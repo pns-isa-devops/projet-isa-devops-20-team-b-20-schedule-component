@@ -33,7 +33,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     @PersistenceContext
     private EntityManager entityManager;
 
-
     @Override
     public Delivery getNextDelivery() {
         Drone drone;
@@ -56,6 +55,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     @Override
     public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) {
+        delivery = entityManager.merge(delivery);
         Drone drone;
         Optional<Drone> d = this.findById("000");
         if (d.isPresent()) {
@@ -105,14 +105,16 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     /**
-     * Check if the date can be use for a delivery
-     * TODO refactor pour que la méthode cherche dans TOUS les drones.
+     * Check if the date can be use for a delivery TODO refactor pour que la méthode
+     * cherche dans TOUS les drones.
+     *
      * @param date
      * @return boolean
      */
     public boolean dateIsAvailable(GregorianCalendar date, Drone drone) {
         for (TimeSlot ts : drone.getTimeSlots()) {
-            if (ts.getDate().get(Calendar.HOUR_OF_DAY) == date.get(Calendar.HOUR_OF_DAY) && ts.getDate().get(Calendar.MINUTE) == date.get(Calendar.MINUTE))
+            if (ts.getDate().get(Calendar.HOUR_OF_DAY) == date.get(Calendar.HOUR_OF_DAY)
+                    && ts.getDate().get(Calendar.MINUTE) == date.get(Calendar.MINUTE))
                 return false;
         }
         return true;
@@ -124,13 +126,15 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param date
      * @param delivery
      */
-    public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery, Drone drone) throws IllegalAccessException {
+    public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery, Drone drone)
+            throws IllegalAccessException {
         if (!this.dateIsAvailable(date, drone)) {
             throw new IllegalAccessException("The time slot already has a delivery.");
         }
+        delivery = entityManager.merge(delivery);
+        drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
         timeSlot.setDelivery(delivery);
-        //entityManager.merge(delivery);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
 
@@ -144,6 +148,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         timeSlot.setDate(date);
         timeSlot.setState(TimeState.CHARGING);
         entityManager.persist(timeSlot);
+        drone = entityManager.merge(drone);
         drone.getTimeSlots().add(timeSlot);
     }
 
@@ -156,6 +161,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     public void setChargingTimeSlots(Set<TimeSlot> timeSlots) {
         int count = 0;
         for (TimeSlot ts : timeSlots) {
+            ts = entityManager.merge(ts);
             if (ts.getState() == TimeState.DELIVERY) {
                 count++;
                 if (count % 2 == 0) {
@@ -195,7 +201,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                 c.setTimeInMillis(first.getDate().getTimeInMillis() - FIFTEEN_MINUTES_DURATION);
                 ts.setDate(c);
                 timeslots.add(ts);
-            } else if (next.getDate().getTimeInMillis() - first.getDate().getTimeInMillis() < 3 * FIFTEEN_MINUTES_DURATION) {
+            } else if (next.getDate().getTimeInMillis() - first.getDate().getTimeInMillis() < 3
+                    * FIFTEEN_MINUTES_DURATION) {
                 TimeSlot ts = new TimeSlot();
                 ts.setState(TimeState.UNAVAILABLE);
                 GregorianCalendar c = new GregorianCalendar();
@@ -230,6 +237,10 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     public void setNewSchedule(Drone drone, Set<TimeSlot> timeslots) {
-        drone.setTimeSlots(timeslots);
+        drone = entityManager.merge(drone);
+        for (TimeSlot timeSlot : timeslots) {
+            timeSlot = entityManager.merge(timeSlot);
+            drone.add(timeSlot);
+        }
     }
 }
