@@ -62,6 +62,7 @@ pipeline{
                     }
                 }
                 stage("Deploy") {
+                    when { expression { BRANCH_NAME ==~ /(master|develop)/ }}
                     steps {
                         configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
                                 echo "Deployment into artifactory"
@@ -156,7 +157,7 @@ pipeline{
             failOnError: true,
             color: 'danger',
             token: env.SLACK_TOKEN,
-            message: 'Job: ' + env.JOB_NAME + ' with buildnumber ' + env.BUILD_NUMBER + ' was failed',
+            message: 'Job: ' + env.JOB_NAME + ' with buildnumber ' + env.BUILD_NUMBER + ' was failed' + update + gate,
             baseUrl: env.SLACK_WEBHOOK)
             echo "======== pipeline execution failed========"
             sh 'mvn versions:revert'
