@@ -243,4 +243,41 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             drone.add(timeSlot);
         }
     }
+
+    /** NEW ALGO */
+
+    public static final int STARTING_HOUR = 8;
+
+    public int getIndexFromDate(GregorianCalendar date) {
+        GregorianCalendar startingDay = new GregorianCalendar(
+            date.get(GregorianCalendar.YEAR),
+            date.get(GregorianCalendar.MONTH),
+            date.get(GregorianCalendar.DAY_OF_MONTH),
+            STARTING_HOUR,
+            0
+        );
+
+        long startingMillis = startingDay.getTimeInMillis();
+        long dateMillis = date.getTimeInMillis();
+
+        long index = (dateMillis - startingMillis)/1000/60/15;
+        return (int)index;
+    }
+
+    public GregorianCalendar getDateFromIndex(int index) {
+        GregorianCalendar now = new GregorianCalendar();
+        GregorianCalendar startingDay = new GregorianCalendar(
+            now.get(GregorianCalendar.YEAR),
+            now.get(GregorianCalendar.MONTH),
+            now.get(GregorianCalendar.DAY_OF_MONTH),
+            STARTING_HOUR,
+            0
+        );
+        long millisFromStartingDay = index * 15 * 60 * 1000;
+        long millisNow = startingDay.getTimeInMillis() + millisFromStartingDay;
+        
+        GregorianCalendar date = new GregorianCalendar();
+        date.setTimeInMillis(millisNow); 
+        return date;
+    }
 }
