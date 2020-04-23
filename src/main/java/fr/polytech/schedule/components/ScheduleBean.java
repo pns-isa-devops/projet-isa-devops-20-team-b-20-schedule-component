@@ -247,7 +247,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     /** NEW ALGO */
 
     public static final int STARTING_HOUR = 8;
+    public static final int NUMBER_OF_SLOT_PER_DAYS = 40; //end of days 18h
 
+    /**
+     * Get slot's index of Date 
+     * @param date
+     * @return index
+     */
     public int getIndexFromDate(GregorianCalendar date) {
         GregorianCalendar startingDay = new GregorianCalendar(
             date.get(GregorianCalendar.YEAR),
@@ -264,6 +270,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         return (int)index;
     }
 
+    /**
+     * Get date from slot's index, it's today date
+     * @param index
+     * @return date
+     */
     public GregorianCalendar getDateFromIndex(int index) {
         GregorianCalendar now = new GregorianCalendar();
         GregorianCalendar startingDay = new GregorianCalendar(
@@ -279,5 +290,131 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         GregorianCalendar date = new GregorianCalendar();
         date.setTimeInMillis(millisNow); 
         return date;
+    }
+
+    /**
+     * Convert list timeslots to list timestate to simply algo 
+     * @param timeslots
+     * @return list of timestate
+     */
+    public List<TimeState> convertTimeSlotsToList(Set<TimeSlot> timeslots) {
+        List<TimeSlot> timeslots2 = new ArrayList<>(timeslots);
+        List<TimeState> schedule = Collections.nCopies(NUMBER_OF_SLOT_PER_DAYS, (TimeState) null);
+
+        for(int i=0; i<timeslots.size(); i++)
+        {
+            int index = getIndexFromDate(timeslots2.get(i).getDate());
+            schedule.set(index, timeslots2.get(i).getState());
+        }
+
+        return schedule;
+    }
+
+    /**
+     * Convert list of timestate to list of timeslots
+     * timeslotsOriginal is the timeslot list with deliveries to get it to insert it
+     * Can use getTimeSlotsWithOnlyDeliveries
+     * @param schedule
+     * @param timeslotsOriginal
+     * @return list of timeslots
+     */
+    public Set<TimeSlot> convertListToTimeSlots(List<TimeState> schedule, Set<TimeSlot> timeslotsOriginal) {
+        Set<TimeSlot> timeSlots = new HashSet<>();
+        for(int i=0; i<schedule.size(); i++) 
+        {
+            if(schedule.get(i) != null) 
+            {
+                TimeSlot timeSlot = new TimeSlot(getDateFromIndex(i), schedule.get(i));
+                if(schedule.get(i) == TimeState.DELIVERY)
+                {
+                    Delivery delivery = findDeliveryAtDate(timeslotsOriginal, timeSlot.getDate());
+                    timeSlot.setDelivery(delivery);
+                }
+                timeSlots.add(timeSlot);
+            }
+        }
+        return timeSlots;
+    }
+
+    /**
+     * Get delivery from a date (used by convertListToTimeSlots)
+     * @param timeslots
+     * @param date
+     * @return delivery
+     */
+    public Delivery findDeliveryAtDate(Set<TimeSlot> timeslots, GregorianCalendar date) {
+        for(TimeSlot ts : timeslots)
+        {
+            if(ts.getDate().compareTo(date) == 0) return ts.getDelivery();
+        }
+        return null;
+    }
+
+    /**
+     * Count how many deliveries before index without charging (must be <4)
+     * @param schedule
+     * @param index
+     * @return number of delivery
+     */
+    public int numberOfDeliveriesWithoutChargingBefore(List<TimeState> schedule, int index)
+    {
+        int count = 0;
+        for(int i=index-1; i>= 0 && schedule.get(i) != TimeState.CHARGING; i--)
+        {
+            if (schedule.get(i) == TimeState.DELIVERY) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Count how many deliveries before index without review (must be <)
+     * @param schedule
+     * @param index
+     * @return number of delivery
+     */
+    public int numberOfDeliveriesWithoutReviewBefore(List<TimeState> schedule, int index)
+    {
+        int count = 0;
+        for(int i=index-1; i>= 0 && schedule.get(i) != TimeState.REVIEW; i--)
+        {
+            if (schedule.get(i) == TimeState.DELIVERY) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Get index previous charging, 0 if never charge of the day
+     * @param schedule
+     * @param index
+     * @return number of delivery
+     */
+    public int indexPreviousCharging(List<TimeState> schedule, int index)
+    {
+        int i;
+        for(i=index-1; i>= 0 && schedule.get(i) != TimeState.CHARGING; i--);
+        return i;
+    }
+
+    /**
+     * Get index previous review, 0 if never review of the day
+     * @param schedule
+     * @param index
+     * @return number of delivery
+     */
+    public int indexPreviousReview(List<TimeState> schedule, int index)
+    {
+        int i;
+        for(i=index-1; i>= 0 && schedule.get(i) != TimeState.REVIEW; i--);
+        return i;
+    }
+
+    /**
+     * Get the number of delivery without review the day before 
+     * TODO implemeent it (if necessary)
+     * @return number of delivery
+     */
+    public int numberOfDeliveriesWithoutReviewTheDayBefore() {
+        //TODO implement it (if necessary)
+        return 0;
     }
 }
