@@ -99,14 +99,22 @@ public class ScheduleTest extends AbstractScheduleTest {
     }
 
     // Fonctionnel
+    @Ignore
     @Test
-    public void scheduleDeliveryTestWithNothing() {
-        assertTrue(true);
+    public void scheduleDeliveryTest() {
+        // TODO : interfaces instead of schedulebean
         GregorianCalendar c = new GregorianCalendar();
         c.setTimeInMillis(c.getTimeInMillis() + 1000);
         schedule.scheduleDelivery(c, delivery1);
         Delivery next = schedule.getNextDelivery();
         assertEquals(delivery1, next);
+    }
+    @Test
+    public void getNextDeliveriesTest() {
+
+        assertNull(deliveryOrganizer.getNextDelivery());
+        assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(), delivery1));
+        assertNull(deliveryOrganizer.getNextDelivery());
     }
 
     /**
@@ -158,13 +166,7 @@ public class ScheduleTest extends AbstractScheduleTest {
         assertEquals(3, schedule.getTimeSlotsWithOnlyDeliveries(drone).size());
     }
 
-    @Test
-    public void getNextDeliveriesTest() {
 
-        assertNull(deliveryOrganizer.getNextDelivery());
-        assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(), delivery1));
-        assertNull(deliveryOrganizer.getNextDelivery());
-    }
 
     @Test
     public void getTimeSlotsWithOnlyDeliveriesWithDeliveryAndOther() throws IllegalAccessException {
@@ -189,61 +191,213 @@ public class ScheduleTest extends AbstractScheduleTest {
 
     }
 
+    /* The following methods are testing the scheduling :
+    *    D = delivery
+    *    N = Nothing
+     */
+
+    /**
+     *  D1 - D2 - D3 - N
+     *   Charged or at the beginning of the day -> Delivery - Delivery - Delivery - Charging - Charging - Charging - Charging
+     */
     @Test
-    public void setChargingTimeSlotsTestWithTwoDeliveries1() throws IllegalAccessException {
+    public void setChargingTimeSlotsTestWithThreeDeliveries1() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), delivery3, drone);
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
-        assertEquals(2, ts.size());
-        schedule.setChargingTimeSlots(ts);
         assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        // charge during one hour so 4 timeslots of 15 mins
+        assertEquals(7, ts.size());
         schedule.setNewSchedule(this.drone, ts);
-        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
-        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
     }
 
+
+    /**
+     *    D1 - N - D2 - D3
+    *   Charged or at the beginning of the day -> Delivery - Forbidden - Delivery - Delivery - Charging - Charging - Charging - Charging
+     */
     @Test
-    public void setChargingTimeSlotsTestWithTwoDeliveries2() throws IllegalAccessException {
+    public void setChargingTimeSlotsTestWithThreeDeliveries2() throws IllegalAccessException {
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
         schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), delivery3, drone);
+
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
-        assertEquals(2, ts.size());
-        schedule.setChargingTimeSlots(ts);
         assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(8, ts.size());
         schedule.setNewSchedule(drone, ts);
-        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
-        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
     }
 
     /**
-     * Tests getTimeSlotsWithOnlyDeliveries
+     *    D1 - D2 - N - D3
+     *   Charged or at the beginning of the day -> Delivery - Delivery - Forbidden - Delivery - Charging - Charging - Charging - Charging
      */
     @Test
-    public void setUnavailableTimeSlotsTestsWithTwoDeliveries1() throws IllegalAccessException {
-        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery1, drone);
-        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), delivery2, drone);
-        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
-        assertEquals(2, ts.size());
-        schedule.setChargingTimeSlots(ts);
-        schedule.setUnavailableTimeSlots(ts);
-        assertEquals(4, ts.size());
-        schedule.setNewSchedule(drone, ts);
-        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
-        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), drone));
-    }
+    public void setChargingTimeSlotsTestWithThreeDeliveries3() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), delivery3, drone);
 
-    @Test
-    public void setUnavailableTimeSlotsTestsWithTwoDeliveries2() throws IllegalAccessException {
-        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery1, drone);
-        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), delivery2, drone);
         Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
-        assertEquals(2, ts.size());
+        assertEquals(3, ts.size());
         schedule.setChargingTimeSlots(ts);
         schedule.setUnavailableTimeSlots(ts);
-        assertEquals(4, ts.size());
+        assertEquals(8, ts.size());
         schedule.setNewSchedule(drone, ts);
         assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
         assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
     }
+
+    /**
+     *     D1 - N - D2 - N - D3
+     *   Charged or at the beginning of the day -> Delivery - Forbidden - Delivery - Forbidden  Delivery - Charging - Charging - Charging - Charging
+     */
+    @Test
+    public void setChargingTimeSlotsTestWithThreeDeliveries4() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), delivery3, drone);
+
+        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
+        assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(9, ts.size());
+        schedule.setNewSchedule(drone, ts);
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 15), drone));
+    }
+
+    /**
+     *     D1 - N - N - D2 - D3
+     *   Charged or at the beginning of the day -> Delivery - Forbidden - Forbidden - Delivery - Delivery - Charging - Charging - Charging - Charging
+     */
+    @Test
+    public void setChargingTimeSlotsTestWithThreeDeliveries5() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), delivery3, drone);
+
+        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
+        assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(9, ts.size());
+        schedule.setNewSchedule(drone, ts);
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 15), drone));
+    }
+
+    /**
+     *     D1 - D2 - N - N - D3
+     *   Charged or at the beginning of the day -> Delivery - Delivery - Forbidden - Forbidden - Delivery - Charging - Charging - Charging - Charging
+     */
+    @Test
+    public void setChargingTimeSlotsTestWithThreeDeliveries6() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), delivery3, drone);
+
+        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
+        assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(9, ts.size());
+        schedule.setNewSchedule(drone, ts);
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 15), drone));
+    }
+
+    /**
+     *     D1 - N - N - N - D2 - D3
+     *   Charged or at the beginning of the day -> Delivery - Forbidden - Forbidden - Forbidden - Delivery - Delivery - Charging - Charging - Charging - Charging
+     */
+    @Test
+    public void setChargingTimeSlotsTestWithThreeDeliveries7() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), delivery3, drone);
+
+        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
+        assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(10, ts.size());
+        schedule.setNewSchedule(drone, ts);
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 30), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 45), drone));
+    }
+
+    /**
+     *     D1 - D2 - N - N - N - D3
+     *   Charged or at the beginning of the day -> Delivery - Delivery - Forbidden - Forbidden - Forbidden - Delivery - Charging - Charging - Charging - Charging
+     */
+    @Test
+    public void setChargingTimeSlotsTestWithThreeDeliveries8() throws IllegalAccessException {
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 0), delivery1, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 15), delivery2, drone);
+        schedule.createDeliveryTimeSlot(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 15), delivery3, drone);
+
+        Set<TimeSlot> ts = schedule.getTimeSlotsWithOnlyDeliveries(drone);
+        assertEquals(3, ts.size());
+        schedule.setChargingTimeSlots(ts);
+        schedule.setUnavailableTimeSlots(ts);
+        assertEquals(10, ts.size());
+        schedule.setNewSchedule(drone, ts);
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 8, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 30), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 9, 45), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 0), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 15), drone));
+        assertFalse(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 30), drone));
+        assertTrue(schedule.dateIsAvailable(new GregorianCalendar(2001, Calendar.JANUARY, 2, 10, 45), drone));
+    }
+
+
+
+
 
 }
