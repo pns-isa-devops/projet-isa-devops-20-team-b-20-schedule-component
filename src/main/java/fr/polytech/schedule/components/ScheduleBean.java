@@ -17,6 +17,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
+import java.sql.Time;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -64,6 +65,12 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             throw new DroneNotFoundException("The drone 000 has not been found.");
         }
 
+        // If not initialized
+        drone = entityManager.merge(drone);
+        if(drone.getTimeSlots().size() == 0){
+            initDailyTimeSlots(drone);
+        }
+
         // Stage 1 : Check that the asked timeslot is available
         if (!dateIsAvailable(date, drone))
             return false;
@@ -76,20 +83,33 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             return false;
         }
 
-        // Stage 3 : Remove CHARGING and UNAVAILABLE slots in order to obtain only
-        // DELIVERY timeslots
 
-        Set<TimeSlot> timeslots = getTimeSlotsWithOnlyDeliveries(drone);
+        // UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
+        List<TimeState> timeStates = convertTimeSlotsToList(drone.getTimeSlots());
 
-        // Stage 3.1 : Set back the CHARGING time slots
-        // TODO : Remove bug concurrent access
-        setChargingTimeSlots(timeslots);
-        // Stage 3.2 : Set back UNAVAILABLE time slots
-        setUnavailableTimeSlots(timeslots);
+        int index = getIndexFromDate(date);
+        for (int i=0;i<timeStates.size();i++){
+            if (i==index){
+                for (;i<timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE;i++);
+                for (;i<timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE;i++){
+                    TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(),getDateFromIndex(i));
+                    entityManager.merge(ts);
+                    ts.setState(TimeState.CHARGING);
+                    entityManager.persist(ts);
 
-        setNewSchedule(drone, timeslots);
+
+                }
+                break;
+            }
+
+        }
+        entityManager.persist(drone);
+
+        // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
 
         delivery.setDrone(drone);
+
+        drone = entityManager.merge(drone);
 
         return true;
     }
@@ -144,12 +164,20 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * Creates a charging time slot.
      */
     public void createChargingTimeSlot(GregorianCalendar date, Drone drone) {
+        createTimeSlot(date,drone,TimeState.CHARGING);
+    }
+
+    /**
+     * Creates a charging time slot.
+     */
+    public void createTimeSlot(GregorianCalendar date, Drone drone, TimeState timeState) {
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
-        timeSlot.setState(TimeState.CHARGING);
+        timeSlot.setState(timeState);
         entityManager.persist(timeSlot);
         drone = entityManager.merge(drone);
         drone.getTimeSlots().add(timeSlot);
+        entityManager.persist(drone);
     }
 
     /**
@@ -244,31 +272,41 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
     }
 
+    public void initDailyTimeSlots(Drone drone){
+        // Check if a review is required
+        drone = entityManager.merge(drone);
+        int droneNeedsReview = 80 - drone.getFlightTime();
+        boolean reviewScheduled = false;
+        int droneNeedsCharge = 3;
+
+            // 3h review = 12 timeslots
+            for (int i=0 ; i< NUMBER_OF_SLOT_PER_DAYS;i++){
+                if(droneNeedsReview == 0 && !reviewScheduled){
+                    for (int j = 0;j < 12  && i< NUMBER_OF_SLOT_PER_DAYS; j++,i++){
+                        createTimeSlot(getDateFromIndex(i),drone,TimeState.REVIEW);
+                    }
+                    reviewScheduled = true;
+                }
+                else if (droneNeedsCharge == 0){
+                    for (int k = 0;k <4 && i< NUMBER_OF_SLOT_PER_DAYS ; k++,i++){
+                        createTimeSlot(getDateFromIndex(i),drone,TimeState.UNAVAILABLE);
+                        System.out.println(i);
+                    }
+                    droneNeedsCharge = 2;
+                }
+                else{
+                    // It's available so probably a delivery
+                    droneNeedsCharge --;
+                    droneNeedsReview --;
+                }
+            }
+            entityManager.persist(drone);
+    }
+
     /** NEW ALGO */
 
     public static final int STARTING_HOUR = 8;
     public static final int NUMBER_OF_SLOT_PER_DAYS = 40; //end of days 18h
-
-    /**
-     * Get slot's index of Date 
-     * @param date
-     * @return index
-     */
-    public int getIndexFromDate(GregorianCalendar date) {
-        GregorianCalendar startingDay = new GregorianCalendar(
-            date.get(GregorianCalendar.YEAR),
-            date.get(GregorianCalendar.MONTH),
-            date.get(GregorianCalendar.DAY_OF_MONTH),
-            STARTING_HOUR,
-            0
-        );
-
-        long startingMillis = startingDay.getTimeInMillis();
-        long dateMillis = date.getTimeInMillis();
-
-        long index = (dateMillis - startingMillis)/1000/60/15;
-        return (int)index;
-    }
 
     /**
      * Get date from slot's index, it's today date
@@ -278,36 +316,34 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     public GregorianCalendar getDateFromIndex(int index) {
         GregorianCalendar now = new GregorianCalendar();
         GregorianCalendar startingDay = new GregorianCalendar(
-            now.get(GregorianCalendar.YEAR),
-            now.get(GregorianCalendar.MONTH),
-            now.get(GregorianCalendar.DAY_OF_MONTH),
-            STARTING_HOUR,
-            0
+                now.get(GregorianCalendar.YEAR),
+                now.get(GregorianCalendar.MONTH),
+                now.get(GregorianCalendar.DAY_OF_MONTH),
+                STARTING_HOUR,
+                0
         );
         long millisFromStartingDay = index * 15 * 60 * 1000;
         long millisNow = startingDay.getTimeInMillis() + millisFromStartingDay;
-        
         GregorianCalendar date = new GregorianCalendar();
-        date.setTimeInMillis(millisNow); 
+        date.setTimeInMillis(millisNow);
         return date;
     }
 
     /**
-     * Convert list timeslots to list timestate to simply algo 
+     * Convert list timeslots to list timestate to simply algo
      * @param timeslots
      * @return list of timestate
      */
     public List<TimeState> convertTimeSlotsToList(Set<TimeSlot> timeslots) {
         List<TimeSlot> timeslots2 = new ArrayList<>(timeslots);
-        List<TimeState> schedule = Collections.nCopies(NUMBER_OF_SLOT_PER_DAYS, (TimeState) null);
-
-        for(int i=0; i<timeslots.size(); i++)
+        TimeState[] schedule = new TimeState[NUMBER_OF_SLOT_PER_DAYS];
+        Arrays.fill(schedule,null);
+        for(int i=0; i<timeslots2.size(); i++)
         {
             int index = getIndexFromDate(timeslots2.get(i).getDate());
-            schedule.set(index, timeslots2.get(i).getState());
+            schedule[index]= timeslots2.get(i).getState();
         }
-
-        return schedule;
+        return Arrays.asList(schedule);
     }
 
     /**
@@ -320,14 +356,14 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      */
     public Set<TimeSlot> convertListToTimeSlots(List<TimeState> schedule, Set<TimeSlot> timeslotsOriginal) {
         Set<TimeSlot> timeSlots = new HashSet<>();
-        for(int i=0; i<schedule.size(); i++) 
+        for(int i=0; i<schedule.size(); i++)
         {
-            if(schedule.get(i) != null) 
+            if(schedule.get(i) != null)
             {
                 TimeSlot timeSlot = new TimeSlot(getDateFromIndex(i), schedule.get(i));
                 if(schedule.get(i) == TimeState.DELIVERY)
                 {
-                    Delivery delivery = findDeliveryAtDate(timeslotsOriginal, timeSlot.getDate());
+                    Delivery delivery = findTimeSlotAtDate(timeslotsOriginal, timeSlot.getDate()).getDelivery();
                     timeSlot.setDelivery(delivery);
                 }
                 timeSlots.add(timeSlot);
@@ -342,79 +378,35 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param date
      * @return delivery
      */
-    public Delivery findDeliveryAtDate(Set<TimeSlot> timeslots, GregorianCalendar date) {
+    public TimeSlot findTimeSlotAtDate(Set<TimeSlot> timeslots, GregorianCalendar date) {
         for(TimeSlot ts : timeslots)
         {
-            if(ts.getDate().compareTo(date) == 0) return ts.getDelivery();
+            if(ts.getDate().compareTo(date) == 0) return ts;
         }
         return null;
     }
 
-    /**
-     * Count how many deliveries before index without charging (must be <4)
-     * @param schedule
-     * @param index
-     * @return number of delivery
-     */
-    public int numberOfDeliveriesWithoutChargingBefore(List<TimeState> schedule, int index)
-    {
-        int count = 0;
-        for(int i=index-1; i>= 0 && schedule.get(i) != TimeState.CHARGING; i--)
-        {
-            if (schedule.get(i) == TimeState.DELIVERY) count++;
-        }
-        return count;
-    }
 
     /**
-     * Count how many deliveries before index without review (must be <)
-     * @param schedule
-     * @param index
-     * @return number of delivery
+     * Get slot's index of Date
+     * @param date
+     * @return index
      */
-    public int numberOfDeliveriesWithoutReviewBefore(List<TimeState> schedule, int index)
-    {
-        int count = 0;
-        for(int i=index-1; i>= 0 && schedule.get(i) != TimeState.REVIEW; i--)
-        {
-            if (schedule.get(i) == TimeState.DELIVERY) count++;
-        }
-        return count;
+    public int getIndexFromDate(GregorianCalendar date) {
+        GregorianCalendar startingDay = new GregorianCalendar(
+                date.get(GregorianCalendar.YEAR),
+                date.get(GregorianCalendar.MONTH),
+                date.get(GregorianCalendar.DAY_OF_MONTH),
+                STARTING_HOUR,
+                0
+        );
+
+        long startingMillis = startingDay.getTimeInMillis();
+        long dateMillis = date.getTimeInMillis();
+
+        long index = (dateMillis - startingMillis)/1000/60/15;
+        return (int)index;
     }
 
-    /**
-     * Get index previous charging, 0 if never charge of the day
-     * @param schedule
-     * @param index
-     * @return number of delivery
-     */
-    public int indexPreviousCharging(List<TimeState> schedule, int index)
-    {
-        int i;
-        for(i=index-1; i>= 0 && schedule.get(i) != TimeState.CHARGING; i--);
-        return i;
-    }
 
-    /**
-     * Get index previous review, 0 if never review of the day
-     * @param schedule
-     * @param index
-     * @return number of delivery
-     */
-    public int indexPreviousReview(List<TimeState> schedule, int index)
-    {
-        int i;
-        for(i=index-1; i>= 0 && schedule.get(i) != TimeState.REVIEW; i--);
-        return i;
-    }
-
-    /**
-     * Get the number of delivery without review the day before 
-     * TODO implemeent it (if necessary)
-     * @return number of delivery
-     */
-    public int numberOfDeliveriesWithoutReviewTheDayBefore() {
-        //TODO implement it (if necessary)
-        return 0;
-    }
 }
