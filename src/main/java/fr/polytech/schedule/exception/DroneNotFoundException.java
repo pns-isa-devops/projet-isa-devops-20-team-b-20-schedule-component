@@ -1,4 +1,11 @@
 package fr.polytech.schedule.exception;
 
-public class DroneNotFoundException {
+import javax.ws.rs.NotFoundException;
+
+public class DroneNotFoundException extends NotFoundException {
+
+    public DroneNotFoundException(String message){
+        super(message);
+    }
+
 }
