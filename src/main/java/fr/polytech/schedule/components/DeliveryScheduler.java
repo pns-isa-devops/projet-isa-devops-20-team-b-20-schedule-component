@@ -5,6 +5,8 @@ import java.util.GregorianCalendar;
 import javax.ejb.Local;
 
 import fr.polytech.entities.Delivery;
+import fr.polytech.schedule.exception.DroneNotFoundException;
+import fr.polytech.schedule.exception.TimeslotUnvailableException;
 
 @Local
 public interface DeliveryScheduler {
@@ -15,6 +17,9 @@ public interface DeliveryScheduler {
      * @param date     of delivery
      * @param delivery id
      * @return if scheduling a delivery to this hour is possible
+     * @throws DroneNotFoundException
+     * @throws TimeslotUnvailableException
      */
-    boolean scheduleDelivery(GregorianCalendar date, Delivery delivery);
+    boolean scheduleDelivery(GregorianCalendar date, Delivery delivery)
+            throws DroneNotFoundException, TimeslotUnvailableException;
 }

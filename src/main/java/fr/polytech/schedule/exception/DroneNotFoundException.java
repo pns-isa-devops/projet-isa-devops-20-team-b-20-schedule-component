@@ -1,11 +1,18 @@
 package fr.polytech.schedule.exception;
 
-import javax.ws.rs.NotFoundException;
+import java.io.Serializable;
 
-public class DroneNotFoundException extends NotFoundException {
+public class DroneNotFoundException extends Exception implements Serializable {
 
-    public DroneNotFoundException(String message){
-        super(message);
+    private static final long serialVersionUID = 1L;
+
+    public DroneNotFoundException(String droneId) {
+        super(droneId);
+    }
+
+    @Override
+    public String toString() {
+        return "The drone : " + getMessage() + " has not been found";
     }
 
 }
