@@ -1,13 +1,18 @@
 package fr.polytech.schedule.components;
 
-import fr.polytech.entities.Delivery;
-import fr.polytech.entities.Drone;
-import fr.polytech.entities.TimeSlot;
-import fr.polytech.entities.TimeState;
-import fr.polytech.schedule.exception.DroneNotFoundException;
-import fr.polytech.schedule.exception.TimeslotUnvailableException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
 import javax.inject.Named;
@@ -18,10 +23,13 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
-import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
+
+import fr.polytech.entities.Delivery;
+import fr.polytech.entities.Drone;
+import fr.polytech.entities.TimeSlot;
+import fr.polytech.entities.TimeState;
+import fr.polytech.schedule.exception.DroneNotFoundException;
+import fr.polytech.schedule.exception.TimeslotUnvailableException;
 
 @Stateless
 @LocalBean
@@ -67,7 +75,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
 
         // If not initialized
-        drone = entityManager.merge(drone);
         if (drone.getTimeSlots().size() == 0) {
             initDailyTimeSlots(drone);
         }
@@ -90,23 +97,16 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                     ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
-                    entityManager.merge(ts);
+                    ts = entityManager.merge(ts);
                     ts.setState(TimeState.CHARGING);
-                    entityManager.persist(ts);
-
                 }
                 break;
             }
 
         }
-        entityManager.persist(drone);
-
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
-
-        delivery.setDrone(drone);
-
         drone = entityManager.merge(drone);
-
+        delivery.setDrone(drone);
         return true;
     }
 
@@ -151,10 +151,10 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
+        timeSlot.setDrone(drone);
         timeSlot.setDelivery(delivery);
         entityManager.persist(timeSlot);
-        drone.getTimeSlots().add(timeSlot);
-
+        drone.add(timeSlot);
     }
 
     /**
@@ -168,13 +168,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * Creates a charging time slot.
      */
     public void createTimeSlot(GregorianCalendar date, Drone drone, TimeState timeState) {
+        drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
         timeSlot.setState(timeState);
+        timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
-        drone = entityManager.merge(drone);
         drone.getTimeSlots().add(timeSlot);
-        entityManager.persist(drone);
     }
 
     /**
@@ -254,13 +254,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
     }
 
-    @PostConstruct
-    /**
-     * Init the drone API on localhost
-     */
-    public void initDrone() {
-    }
-
     public void setNewSchedule(Drone drone, Set<TimeSlot> timeslots) {
         drone = entityManager.merge(drone);
         for (TimeSlot timeSlot : timeslots) {
@@ -271,7 +264,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     public void initDailyTimeSlots(Drone drone) {
         // Check if a review is required
-        drone = entityManager.merge(drone);
         int droneNeedsReview = 80 - drone.getFlightTime();
         boolean reviewScheduled = false;
         int droneNeedsCharge = 3;
@@ -295,7 +287,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                 droneNeedsReview--;
             }
         }
-        entityManager.persist(drone);
     }
 
     /** NEW ALGO */
