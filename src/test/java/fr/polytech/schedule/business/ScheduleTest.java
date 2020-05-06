@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.GregorianCalendar;
-import java.util.Set;
 
 import javax.ejb.EJB;
 import javax.inject.Inject;
@@ -27,7 +26,6 @@ import arquillian.AbstractScheduleTest;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
 import fr.polytech.entities.Parcel;
-import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.components.DeliveryOrganizer;
 import fr.polytech.schedule.components.DeliveryScheduler;
@@ -36,7 +34,7 @@ import fr.polytech.schedule.exception.DroneNotFoundException;
 import fr.polytech.schedule.exception.TimeslotUnvailableException;
 
 @RunWith(Arquillian.class)
-@Transactional(TransactionMode.COMMIT)
+@Transactional(TransactionMode.DISABLED)
 public class ScheduleTest extends AbstractScheduleTest {
 
         @EJB(name = "schedule")
@@ -64,7 +62,8 @@ public class ScheduleTest extends AbstractScheduleTest {
         private GregorianCalendar now;
 
         @Before
-        public void init() {
+        public void init() throws Exception {
+                utx.begin();
                 this.drone = new Drone("000");
                 entityManager.persist(drone);
                 now = new GregorianCalendar();
@@ -80,6 +79,7 @@ public class ScheduleTest extends AbstractScheduleTest {
                 entityManager.persist(delivery1);
                 entityManager.persist(delivery2);
                 entityManager.persist(delivery3);
+                utx.commit();
         }
 
         @After
@@ -104,74 +104,89 @@ public class ScheduleTest extends AbstractScheduleTest {
 
         // Fonctionnel
         @Test
-        public void scheduleDeliveryTest() throws DroneNotFoundException, TimeslotUnvailableException {
+        public void scheduleDeliveryTest() throws DroneNotFoundException, TimeslotUnvailableException,
+                        Exception {
+                utx.begin();
                 GregorianCalendar tomorrow = new GregorianCalendar();
                 tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l*60l*60l*1000l);
                 GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
                 tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
                 deliveryScheduler.scheduleDelivery(c, delivery1);
+                utx.commit();
+                utx.begin();
                 Delivery next = deliveryOrganizer.getNextDelivery();
+                utx.commit();
                 assertEquals(delivery1, next);
         }
 
         @Test
-        public void getNextDeliveriesTest() throws DroneNotFoundException, TimeslotUnvailableException {
-
+        public void getNextDeliveriesTest() throws DroneNotFoundException, TimeslotUnvailableException, Exception {
+                utx.begin();
                 assertNull(deliveryOrganizer.getNextDelivery());
                 assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(), delivery1));
                 assertNull(deliveryOrganizer.getNextDelivery());
+                utx.commit();
         }
 
         /**
          * Tests DateIsAvailable
          */
         @Test
-        public void dateIsAvailableTestWithNothing() {
+        public void dateIsAvailableTestWithNothing() throws Exception {
+                utx.begin();
                 assertTrue(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone));
+                utx.commit();
         }
 
         @Test
         public void dateIsAvailableTestWithOneDeliveryBefore()
-                        throws IllegalAccessException, TimeslotUnvailableException {
+                        throws IllegalAccessException, TimeslotUnvailableException, Exception {
+                                utx.begin();
                 schedule.createDeliveryTimeSlot(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 0),
                                 delivery1, drone);
                 assertTrue(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone));
+                                utx.commit();
         }
 
         @Test
         public void dateIsAvailableTestWithOneDeliveryAtSameTime()
-                        throws IllegalAccessException, TimeslotUnvailableException {
+                        throws IllegalAccessException, TimeslotUnvailableException, Exception {
+                                utx.begin();
                 schedule.createDeliveryTimeSlot(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 delivery1, drone);
                 assertFalse(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone));
+                                utx.commit();
         }
 
         @Test
-        public void dateIsAvailableTestWithOneTimeSlotBefore() {
+        public void dateIsAvailableTestWithOneTimeSlotBefore() throws Exception {
+                utx.begin();
                 schedule.createChargingTimeSlot(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 0),
                                 drone);
                 assertTrue(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone));
+                                utx.commit();
         }
 
         @Test
-        public void dateIsAvailableTestWithOneTimeSlotAtSameTime() {
+        public void dateIsAvailableTestWithOneTimeSlotAtSameTime() throws Exception {
                 schedule.createChargingTimeSlot(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone);
                 assertFalse(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                                 drone));
+                                utx.commit();
         }
 
         /*
@@ -187,7 +202,8 @@ public class ScheduleTest extends AbstractScheduleTest {
          */
         @Test
         public void setChargingTimeSlotsTestWithThreeDeliveries1()
-                        throws IllegalAccessException, DroneNotFoundException, TimeslotUnvailableException {
+                        throws IllegalAccessException, DroneNotFoundException, TimeslotUnvailableException, Exception {
+                                utx.begin();
                 schedule.scheduleDelivery(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 0),
                                 delivery1);
@@ -240,12 +256,14 @@ public class ScheduleTest extends AbstractScheduleTest {
                                                                 now.get(GregorianCalendar.MONTH),
                                                                 now.get(GregorianCalendar.DAY_OF_MONTH), 9, 30))
                                 .getState());
+                                utx.commit();
 
         }
 
         @Test
         public void setReviewTimeSlotsAndScheduleDeliveryTestWith()
-                        throws IllegalAccessException, DroneNotFoundException, TimeslotUnvailableException {
+                        throws IllegalAccessException, DroneNotFoundException, TimeslotUnvailableException, Exception {
+                                utx.begin();
                 drone.setFlightTime(79);
 
                 try {
@@ -285,20 +303,24 @@ public class ScheduleTest extends AbstractScheduleTest {
                                                                 now.get(GregorianCalendar.MONTH),
                                                                 now.get(GregorianCalendar.DAY_OF_MONTH), 11, 15))
                                 .getState());
+                                utx.commit();
 
         }
 
         @Test
-        public void getIndexFromDateTest() {
+        public void getIndexFromDateTest() throws Exception {
+                utx.begin();
                 GregorianCalendar date = new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH),
                                 ScheduleBean.STARTING_HOUR, 45);
                 assertEquals(3, schedule.getIndexFromDate(date));
+                utx.commit();
 
         }
 
         @Test
-        public void getDateFromIndexTest() {
+        public void getDateFromIndexTest() throws Exception {
+                utx.begin();
                 GregorianCalendar date = new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH),
                                 ScheduleBean.STARTING_HOUR, 45);
@@ -306,6 +328,7 @@ public class ScheduleTest extends AbstractScheduleTest {
                                 schedule.getDateFromIndex(3).get(GregorianCalendar.HOUR));
                 assertEquals(date.get(GregorianCalendar.MINUTE),
                                 schedule.getDateFromIndex(3).get(GregorianCalendar.MINUTE));
+                                utx.commit();
 
         }
 
