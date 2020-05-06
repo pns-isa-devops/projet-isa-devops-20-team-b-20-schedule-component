@@ -36,7 +36,8 @@ import fr.polytech.schedule.exception.TimeslotUnvailableException;
 @Named("schedule")
 public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
-    public final static int FIFTEEN_MINUTES_DURATION = 15 * 60 * 1000;
+    public static final int STARTING_HOUR = 8;
+    public static final int NUMBER_OF_SLOT_PER_DAYS = 40; // end of days 18h
 
     private static final Logger log = Logger.getLogger(Logger.class.getName());
     @PersistenceContext
@@ -53,6 +54,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
 
         List<Delivery> deliveries = drone.getTimeSlots().stream()
+                .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
                 .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
                 .collect(Collectors.toList());
         if (!deliveries.isEmpty()) {
@@ -111,16 +113,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     /**
-     * Return all deliveries timeslots
-     *
-     * @return Set
-     */
-    public Set<TimeSlot> getTimeSlotsWithOnlyDeliveries(Drone drone) {
-        return new TreeSet<>(drone.getTimeSlots().stream().filter(ts -> ts.getState().equals(TimeState.DELIVERY))
-                .collect(Collectors.toSet()));
-    }
-
-    /**
      * Check if the date can be use for a delivery TODO refactor pour que la méthode
      * cherche dans TOUS les drones.
      *
@@ -167,7 +159,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     /**
      * Creates a charging time slot.
      */
-    public void createTimeSlot(GregorianCalendar date, Drone drone, TimeState timeState) {
+    private void createTimeSlot(GregorianCalendar date, Drone drone, TimeState timeState) {
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
@@ -175,68 +167,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
-    }
-
-    /**
-     * Take a set of time slot and add CHARGING time slots where the drone needs
-     * charge
-     *
-     * @param timeSlots
-     */
-    public void setChargingTimeSlots(Set<TimeSlot> timeSlots) {
-        int count = 0;
-        for (TimeSlot ts : timeSlots) {
-            ts = entityManager.merge(ts);
-            if (ts.getState() == TimeState.DELIVERY) {
-                count++;
-                if (count % 2 == 0) {
-                    TimeSlot chargingTs = new TimeSlot();
-                    GregorianCalendar c = new GregorianCalendar();
-                    c.setTimeInMillis(ts.getDate().getTimeInMillis() + FIFTEEN_MINUTES_DURATION);
-                    chargingTs.setDate(c);
-                    chargingTs.setState(TimeState.CHARGING);
-                    timeSlots.add(chargingTs);
-                }
-            }
-        }
-    }
-
-    /**
-     * Take a set of time slot and add UNAVAILABLE time slots where it's impossible
-     * to schedule a delivery
-     *
-     * @param timeslots
-     */
-    public void setUnavailableTimeSlots(Set<TimeSlot> timeslots) {
-        List<TimeSlot> tss = new ArrayList<>(timeslots);
-        TimeSlot first = tss.get(0);
-        for (int i = 0; i < tss.size(); i++) {
-            TimeSlot next;
-            do {
-                i++;
-                if (i >= tss.size())
-                    return;
-                next = tss.get(i);
-            } while (next.getState() != TimeState.DELIVERY);
-
-            if (next.getDate().getTimeInMillis() - first.getDate().getTimeInMillis() < 2 * FIFTEEN_MINUTES_DURATION) {
-                TimeSlot ts = new TimeSlot();
-                ts.setState(TimeState.UNAVAILABLE);
-                GregorianCalendar c = new GregorianCalendar();
-                c.setTimeInMillis(first.getDate().getTimeInMillis() - FIFTEEN_MINUTES_DURATION);
-                ts.setDate(c);
-                timeslots.add(ts);
-            } else if (next.getDate().getTimeInMillis() - first.getDate().getTimeInMillis() < 3
-                    * FIFTEEN_MINUTES_DURATION) {
-                TimeSlot ts = new TimeSlot();
-                ts.setState(TimeState.UNAVAILABLE);
-                GregorianCalendar c = new GregorianCalendar();
-                c.setTimeInMillis(first.getDate().getTimeInMillis() + FIFTEEN_MINUTES_DURATION);
-                ts.setDate(c);
-                timeslots.add(ts);
-            }
-            first = next;
-        }
     }
 
     public Optional<Drone> findById(String id) {
@@ -254,15 +184,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
     }
 
-    public void setNewSchedule(Drone drone, Set<TimeSlot> timeslots) {
-        drone = entityManager.merge(drone);
-        for (TimeSlot timeSlot : timeslots) {
-            timeSlot = entityManager.merge(timeSlot);
-            drone.add(timeSlot);
-        }
-    }
-
-    public void initDailyTimeSlots(Drone drone) {
+    private void initDailyTimeSlots(Drone drone) {
         // Check if a review is required
         int droneNeedsReview = 80 - drone.getFlightTime();
         boolean reviewScheduled = false;
@@ -289,11 +211,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
     }
 
-    /** NEW ALGO */
-
-    public static final int STARTING_HOUR = 8;
-    public static final int NUMBER_OF_SLOT_PER_DAYS = 40; // end of days 18h
-
     /**
      * Get date from slot's index, it's today date
      *
@@ -317,7 +234,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param timeslots
      * @return list of timestate
      */
-    public List<TimeState> convertTimeSlotsToList(Set<TimeSlot> timeslots) {
+    private List<TimeState> convertTimeSlotsToList(Set<TimeSlot> timeslots) {
         List<TimeSlot> timeslots2 = new ArrayList<>(timeslots);
         TimeState[] schedule = new TimeState[NUMBER_OF_SLOT_PER_DAYS];
         Arrays.fill(schedule, null);
@@ -326,30 +243,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             schedule[index] = timeslots2.get(i).getState();
         }
         return Arrays.asList(schedule);
-    }
-
-    /**
-     * Convert list of timestate to list of timeslots timeslotsOriginal is the
-     * timeslot list with deliveries to get it to insert it Can use
-     * getTimeSlotsWithOnlyDeliveries
-     *
-     * @param schedule
-     * @param timeslotsOriginal
-     * @return list of timeslots
-     */
-    public Set<TimeSlot> convertListToTimeSlots(List<TimeState> schedule, Set<TimeSlot> timeslotsOriginal) {
-        Set<TimeSlot> timeSlots = new HashSet<>();
-        for (int i = 0; i < schedule.size(); i++) {
-            if (schedule.get(i) != null) {
-                TimeSlot timeSlot = new TimeSlot(getDateFromIndex(i), schedule.get(i));
-                if (schedule.get(i) == TimeState.DELIVERY) {
-                    Delivery delivery = findTimeSlotAtDate(timeslotsOriginal, timeSlot.getDate()).getDelivery();
-                    timeSlot.setDelivery(delivery);
-                }
-                timeSlots.add(timeSlot);
-            }
-        }
-        return timeSlots;
     }
 
     /**
