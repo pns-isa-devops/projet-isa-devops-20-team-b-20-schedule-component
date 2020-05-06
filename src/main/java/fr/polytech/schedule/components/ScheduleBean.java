@@ -37,6 +37,7 @@ import fr.polytech.schedule.exception.TimeslotUnvailableException;
 public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     public static final int STARTING_HOUR = 8;
+    public static final int CLOSING_HOUR = 18;
     public static final int NUMBER_OF_SLOT_PER_DAYS = 40; // end of days 18h
 
     private static final Logger log = Logger.getLogger(Logger.class.getName());
@@ -81,6 +82,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             initDailyTimeSlots(drone);
         }
 
+        if(date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
+            throw new TimeslotUnvailableException(date.toString());
         // Stage 1 : Check that the asked timeslot is available
         if (!dateIsAvailable(date, drone))
             throw new TimeslotUnvailableException(date.toString());

@@ -20,6 +20,7 @@ import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
 import org.jboss.arquillian.transaction.api.annotation.Transactional;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -64,7 +65,7 @@ public class ScheduleTest extends AbstractScheduleTest {
         private GregorianCalendar now;
 
         @Before
-        public void init() {
+        public void init()  throws Exception  {
                 this.drone = new Drone("000");
                 entityManager.persist(drone);
                 now = new GregorianCalendar();
@@ -104,21 +105,44 @@ public class ScheduleTest extends AbstractScheduleTest {
 
         // Fonctionnel
         @Test
-        public void scheduleDeliveryTest() throws DroneNotFoundException, TimeslotUnvailableException {
+        public void scheduleDeliveryTestOpeningHour() throws DroneNotFoundException, TimeslotUnvailableException {
                 GregorianCalendar tomorrow = new GregorianCalendar();
                 tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l*60l*60l*1000l);
                 GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
                 tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
-                deliveryScheduler.scheduleDelivery(c, delivery1);
-                Delivery next = deliveryOrganizer.getNextDelivery();
+                schedule.scheduleDelivery(c, delivery1);
+                Delivery next = schedule.getNextDelivery();
                 assertEquals(delivery1, next);
+        }
+
+        @Test(expected = TimeslotUnvailableException.class)
+        public void scheduleDeliveryTestClosingHour() throws DroneNotFoundException, TimeslotUnvailableException {
+                GregorianCalendar tomorrow = new GregorianCalendar();
+                tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l*60l*60l*1000l);
+                GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
+                tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 0, 0);
+                schedule.scheduleDelivery(c, delivery1);
+        }
+
+        @Test(expected = TimeslotUnvailableException.class)
+        public void scheduleDeliveryTestAtTheSameHour() throws DroneNotFoundException, TimeslotUnvailableException {
+                GregorianCalendar tomorrow = new GregorianCalendar();
+                tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l*60l*60l*1000l);
+                GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
+                tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
+                schedule.scheduleDelivery(c, delivery1);
+                Delivery next = schedule.getNextDelivery();
+                assertEquals(delivery1, next);
+                schedule.scheduleDelivery(c, delivery2);
         }
 
         @Test
         public void getNextDeliveriesTest() throws DroneNotFoundException, TimeslotUnvailableException {
-
+                GregorianCalendar yesterday = new GregorianCalendar();
+                yesterday.setTimeInMillis(now.getTimeInMillis() - 24l*60l*60l*1000l);
                 assertNull(deliveryOrganizer.getNextDelivery());
-                assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(), delivery1));
+                assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
+                yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0), delivery1));
                 assertNull(deliveryOrganizer.getNextDelivery());
         }
 
