@@ -68,6 +68,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     @Override
     public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery)
             throws DroneNotFoundException, TimeslotUnvailableException {
+
         delivery = entityManager.merge(delivery);
         Drone drone;
         Optional<Drone> d = this.findById("000");
@@ -96,19 +97,22 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         List<TimeState> timeStates = convertTimeSlotsToList(drone.getTimeSlots());
 
         int index = getIndexFromDate(date);
+
         for (int i = 0; i < timeStates.size(); i++) {
             if (i == index) {
-                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE; i++)
-                    ;
+                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE; i++){
+                    if(timeStates.get(i)== TimeState.CHARGING) break;
+                }
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
                     ts = entityManager.merge(ts);
-                    ts.setState(TimeState.CHARGING);
+                   ts.setState(TimeState.CHARGING);
                 }
                 break;
             }
 
         }
+
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
         drone = entityManager.merge(drone);
         delivery.setDrone(drone);
@@ -253,6 +257,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         List<TimeSlot> timeslots2 = new ArrayList<>(timeslots);
         TimeState[] schedule = new TimeState[NUMBER_OF_SLOT_PER_DAYS];
         Arrays.fill(schedule, null);
+
         for (int i = 0; i < timeslots2.size(); i++) {
             int index = getIndexFromDate(timeslots2.get(i).getDate());
             schedule[index] = timeslots2.get(i).getState();
