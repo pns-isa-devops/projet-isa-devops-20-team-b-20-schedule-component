@@ -115,6 +115,19 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         return true;
     }
 
+    @Override
+    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException
+    {
+        Optional<Drone> d = findById(droneID);
+        Drone drone;
+        if (d.isPresent()) {
+            drone = d.get();
+        } else {
+            throw new DroneNotFoundException(droneID);
+        }
+        return convertTimeSlotsToList(drone.getTimeSlots());
+    }
+
     /**
      * Check if the date can be use for a delivery TODO refactor pour que la méthode
      * cherche dans TOUS les drones.
@@ -203,7 +216,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             } else if (droneNeedsCharge == 0) {
                 for (int k = 0; k < 4 && i < NUMBER_OF_SLOT_PER_DAYS; k++, i++) {
                     createTimeSlot(getDateFromIndex(i), drone, TimeState.UNAVAILABLE);
-                    System.out.println(i);
                 }
                 droneNeedsCharge = 2;
             } else {
