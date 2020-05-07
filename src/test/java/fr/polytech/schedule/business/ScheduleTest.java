@@ -6,12 +6,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javax.ejb.EJB;
@@ -25,7 +22,6 @@ import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
 import org.jboss.arquillian.transaction.api.annotation.Transactional;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -33,7 +29,6 @@ import arquillian.AbstractScheduleTest;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
 import fr.polytech.entities.Parcel;
-import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.components.DeliveryOrganizer;
 import fr.polytech.schedule.components.DeliveryScheduler;
@@ -115,7 +110,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 				case "del":
 					return TimeState.DELIVERY;
 				case "ava":
-					return null;
+					return TimeState.AVAILABLE;
 				case "una":
 					return TimeState.UNAVAILABLE;
 				case "rev":
@@ -170,10 +165,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 		schedule.scheduleDelivery(c, delivery1);
 		List<TimeState> states = schedule.getCurrentPlanning("000");
 		List<TimeState> model = splitString("del,ava,ava,cha,cha,cha,cha,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una");
-		for(int i=0; i<states.size(); i++)
-		{
-		    assertEquals(model.get(i), states.get(i));
-		}
+		for(int i=0; i<states.size(); i++) assertEquals(model.get(i), states.get(i));
 	}
 
 	@Test
@@ -191,13 +183,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 
 		List<TimeState> states = schedule.getCurrentPlanning("000");
 		List<TimeState> model = splitString("del,del,ava,cha,cha,cha,cha,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una");
-		for(int i=0; i<states.size(); i++)
-		{
-			System.out.printf("=======>%d\n", i);
-			System.out.println(model.get(i) != null ? model.get(i).toString() : "AVAILABLE");
-			System.out.println(states.get(i) != null ? states.get(i).toString() : "AVAILABLE");
-		    assertEquals(model.get(i), states.get(i));
-		}
+		for(int i=0; i<states.size(); i++) assertEquals(model.get(i), states.get(i));
 	}
 
 	@Test
@@ -219,16 +205,9 @@ public class ScheduleTest extends AbstractScheduleTest {
 
 		List<TimeState> states = schedule.getCurrentPlanning("000");
 		List<TimeState> model = splitString("del,del,ava,cha,cha,cha,cha,del,ava,ava,cha,cha,cha,cha,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una");
-		for(int i=0; i<states.size(); i++)
-		{
-			System.out.printf("=======>%d\n", i);
-			System.out.println(model.get(i) != null ? model.get(i).toString() : "AVAILABLE");
-			System.out.println(states.get(i) != null ? states.get(i).toString() : "AVAILABLE");
-		    assertEquals(model.get(i), states.get(i));
-		}
+		for(int i=0; i<states.size(); i++) assertEquals(model.get(i), states.get(i));
 	}
 
-	@Ignore
 	@Test
 	public void getPlanningTestWithReview() throws DroneNotFoundException, TimeslotUnvailableException {
 		GregorianCalendar tomorrow = new GregorianCalendar();
@@ -240,15 +219,12 @@ public class ScheduleTest extends AbstractScheduleTest {
 		schedule.scheduleDelivery(c, delivery1);
 
 		GregorianCalendar c2 = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
-		tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 15);
+		tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 11, 15);
 		schedule.scheduleDelivery(c2, delivery2);
 
 		List<TimeState> states = schedule.getCurrentPlanning("000");
-		List<TimeState> model = splitString("del,del,del,cha,cha,cha,cha,del,del,ava,cha,cha,cha,cha,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una");
-		for(int i=0; i<states.size(); i++)
-		{
-		    assertEquals(model.get(i), states.get(i));
-		}
+		List<TimeState> model = splitString("del,rev,rev,rev,rev,rev,rev,rev,rev,rev,rev,rev,rev,del,ava,ava,cha,cha,cha,cha,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una,ava,ava,ava,una,una,una,una");
+		for(int i=0; i<states.size(); i++) assertEquals(model.get(i), states.get(i));
 	}
 
 	@Test

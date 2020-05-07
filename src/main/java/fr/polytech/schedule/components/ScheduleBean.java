@@ -100,9 +100,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         for (int i = 0; i < timeStates.size(); i++) {
             if (i == index) {
-                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE; i++){
-                    if(timeStates.get(i)== TimeState.CHARGING) break;
-                }
+                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE && timeStates.get(i) != TimeState.CHARGING; i++);
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
                     ts = entityManager.merge(ts);
@@ -129,7 +127,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         } else {
             throw new DroneNotFoundException(droneID);
         }
-        return convertTimeSlotsToList(drone.getTimeSlots());
+        return convertTimeSlotsToList(drone.getTimeSlots()).stream().map(e -> e == null ? TimeState.AVAILABLE : e).collect(Collectors.toList());
     }
 
     /**
