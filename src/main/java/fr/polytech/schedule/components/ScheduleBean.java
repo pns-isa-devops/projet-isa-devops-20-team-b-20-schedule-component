@@ -45,7 +45,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     private EntityManager entityManager;
 
     @Override
-    public Delivery getNextDelivery() throws DroneNotFoundException {
+    public Delivery getNextDelivery(GregorianCalendar date) throws DroneNotFoundException {
         Drone drone;
         Optional<Drone> d = this.findById("000");
         if (d.isPresent()) {
@@ -54,9 +54,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             throw new DroneNotFoundException("000");
         }
 
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+        System.out.println(drone.getTimeSlots());
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+
         List<Delivery> deliveries = drone.getTimeSlots().stream()
                 .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
-                .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
+                .filter(timeSlot -> timeSlot.getDate().after(date)).map(TimeSlot::getDelivery)
                 .collect(Collectors.toList());
         if (!deliveries.isEmpty()) {
             return deliveries.get(0);
@@ -113,6 +117,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
         drone = entityManager.merge(drone);
+
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+        System.out.println(drone.getTimeSlots());
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+
         delivery.setDrone(drone);
         return true;
     }
@@ -161,10 +170,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
-        timeSlot.setDrone(drone);
+       // timeSlot.setDrone(drone);
         timeSlot.setDelivery(delivery);
         entityManager.persist(timeSlot);
         drone.add(timeSlot);
+        entityManager.persist(drone);
     }
 
     /**
@@ -182,7 +192,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
         timeSlot.setState(timeState);
-        timeSlot.setDrone(drone);
+        //timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
     }

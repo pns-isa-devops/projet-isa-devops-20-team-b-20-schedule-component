@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -131,7 +132,9 @@ public class ScheduleTest extends AbstractScheduleTest {
 		GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
 		tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
 		schedule.scheduleDelivery(c, delivery1);
-		Delivery next = schedule.getNextDelivery();
+		// Change the hour of tomorrow to 7 to be at the beginning of the day
+		tomorrow.set(Calendar.HOUR_OF_DAY,7);
+		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 	}
 
@@ -151,7 +154,9 @@ public class ScheduleTest extends AbstractScheduleTest {
 		GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
 		tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
 		schedule.scheduleDelivery(c, delivery1);
-		Delivery next = schedule.getNextDelivery();
+		// Change the hour of tomorrow to 7 to be at the beginning of the day
+		tomorrow.set(Calendar.HOUR_OF_DAY,7);
+		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 		schedule.scheduleDelivery(c, delivery2);
 	}
@@ -231,10 +236,15 @@ public class ScheduleTest extends AbstractScheduleTest {
 	public void getNextDeliveriesTest() throws DroneNotFoundException, TimeslotUnvailableException {
 		GregorianCalendar yesterday = new GregorianCalendar();
 		yesterday.setTimeInMillis(now.getTimeInMillis() - 24l*60l*60l*1000l);
-		assertNull(deliveryOrganizer.getNextDelivery());
+
+		// Change the hour of yesterday to 7 to be at the beginning of the day
+		yesterday.set(Calendar.HOUR_OF_DAY,7);
+		assertNull(deliveryOrganizer.getNextDelivery(yesterday));
 		assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
 		yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0), delivery1));
-		assertNull(deliveryOrganizer.getNextDelivery());
+
+		// Test that a delivery of yesterday is not the next
+		assertNull(deliveryOrganizer.getNextDelivery(new GregorianCalendar()));
 	}
 
 	/**
