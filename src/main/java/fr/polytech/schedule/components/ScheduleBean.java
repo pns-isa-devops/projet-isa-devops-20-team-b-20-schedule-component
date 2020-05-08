@@ -85,7 +85,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         TypedQuery<Drone> query = entityManager.createQuery(criteria);
         try {
             List<Drone> drones = query.getResultList();
-            if (drones.size() == 0) {
+            if (drones.isEmpty()) {
                 throw new ZeroDronesInWarehouseException();
             }
             return drones;
@@ -106,7 +106,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         Drone drone = getFreeDrone(date);
 
         // If not initialized
-        if (drone.getTimeSlots().size() == 0) {
+        if (drone.getTimeSlots().isEmpty()) {
             initDailyTimeSlots(drone);
         }
 
@@ -141,7 +141,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     @Override
     public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException, ZeroDronesInWarehouseException {
         for (Drone drone : this.getAllDrones()) {
-            if (drone.getDroneId() == droneID) {
+            if (drone.getDroneId().equals(droneID)) {
                 return convertTimeSlotsToList(drone.getTimeSlots()).
                         stream().
                         map(e -> e == null ? TimeState.AVAILABLE : e).
