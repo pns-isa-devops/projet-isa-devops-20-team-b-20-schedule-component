@@ -20,7 +20,6 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -45,24 +44,26 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         } catch (ZeroDronesInWarehouseException e) {
             return null;
         }
-        Drone drone = drones.get(0); // TODO search on all drones
-        /*Drone drone;
-        Optional<Drone> d = this.findById("000"); //todo n drone
-        if (d.isPresent()) {
-            drone = d.get();
-        } else {
-            throw new DroneNotFoundException("000");
-        }*/
+        //Drone drone = drones.get(0);
 
-        List<Delivery> deliveries = drone.getTimeSlots().stream()
+        List<Delivery> deliveries = new ArrayList<>();
+
+        for (Drone drone : drones) {
+            deliveries.addAll(drone.getTimeSlots().stream()
+                    .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
+                    .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
+                    .collect(Collectors.toList()));
+        }
+
+        /*List<Delivery> deliveries = drone.getTimeSlots().stream()
                 .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
                 .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
-                .collect(Collectors.toList());
-        if (!deliveries.isEmpty()) {
-            return deliveries.get(0);
-        } else {
+                .collect(Collectors.toList());*/
+
+        if (deliveries.isEmpty()) {
             return null;
         }
+        return deliveries.get(0);
     }
 
     public Drone getFreeDrone(GregorianCalendar date) throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException {
@@ -83,7 +84,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         TypedQuery<Drone> query = entityManager.createQuery(criteria);
         try {
-            return query.getResultList();
+            List<Drone> drones = query.getResultList();
+            if (drones.size() == 0) {
+                throw new ZeroDronesInWarehouseException();
+            }
+            return drones;
         } catch (NoResultException e) {
             throw new ZeroDronesInWarehouseException();
         }

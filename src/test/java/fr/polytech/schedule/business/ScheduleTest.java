@@ -19,7 +19,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.yecht.ruby.Out;
 
 import javax.ejb.EJB;
 import javax.inject.Inject;
@@ -33,6 +32,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @RunWith(Arquillian.class)
 @Transactional(TransactionMode.COMMIT)
@@ -105,34 +105,6 @@ public class ScheduleTest extends AbstractScheduleTest {
         }
         utx.commit();
     }
-
-/*    @Test
-    public void getFreeDroneTest() {
-
-        drones.set(0, entityManager.merge(drones.get(0)));
-
-        for (Drone drone : this.drones) {
-            schedule.initDailyTimeSlots(drone);
-            for (TimeSlot timeSlot : drone.getTimeSlots()) {
-                timeSlot.setState(TimeState.DELIVERY);
-                System.out.println(timeSlot);
-            }
-        }
-
-        //System.out.println(this.drones.get(0).getTimeSlots());
-
-        System.out.println("\n-----\n" + drones.get(0).getTimeSlots().stream()
-                .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY).count() + "\n--------\n");
-
-        //assertEquals(1, drones.get(0).getTimeSlots().stream()
-        //        .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY).count());
-
-
-        //assertTrue(schedule.dateIsAvailable(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
-        //                now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 30),
-        //        drones.get(0)));
-
-    }*/
 
     private List<TimeState> splitString(String modelStr) {
         return (Arrays.asList(modelStr.split(","))).stream().map(str -> {
@@ -318,6 +290,42 @@ public class ScheduleTest extends AbstractScheduleTest {
                         now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 15),
                 drones.get(0)));
     }
+
+    @Test
+    public void getFreeDroneWithNoDroneTest() {
+        this.drones.set(0, entityManager.merge(this.drones.get(0)));
+        entityManager.remove(this.drones.get(0));
+        this.drones.set(0, null);
+
+        assertThrows(ZeroDronesInWarehouseException.class, () -> {
+            schedule.getFreeDrone(new GregorianCalendar(now.get(GregorianCalendar.YEAR),
+                    now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 30));
+        });
+    }
+
+    @Test
+    public void getFreeDroneTest() throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException, OutOfWorkingHourTimeSlotException {
+
+        for (int i = 1; i < 3; i++) {
+            this.drones.add(new Drone("00" + i));
+            entityManager.persist(drones.get(i));
+        }
+
+        GregorianCalendar date = new GregorianCalendar(now.get(GregorianCalendar.YEAR),
+                now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), 8, 30);
+
+        assertTrue(schedule.scheduleDelivery(date, delivery1));
+        assertTrue(schedule.scheduleDelivery(date, delivery1));
+        assertTrue(schedule.scheduleDelivery(date, delivery1));
+        assertThrows(NoFreeDroneAtThisTimeSlotException.class, () -> {
+            schedule.scheduleDelivery(date, delivery1);
+        });
+        this.drones.add(new Drone("004"));
+        entityManager.persist(drones.get(3));
+        assertTrue(schedule.scheduleDelivery(date, delivery2));
+
+    }
+
 
     /*
      * The following methods are testing the scheduling : D = delivery N = Nothing
