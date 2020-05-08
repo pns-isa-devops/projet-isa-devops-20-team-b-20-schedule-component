@@ -90,6 +90,8 @@ public class ScheduleTest extends AbstractScheduleTest {
 	public void cleaningUp() throws Exception {
 		utx.begin();
 
+		drone.getTimeSlots().clear();
+
 		delivery1 = entityManager.merge(delivery1);
 		entityManager.remove(delivery1);
 		delivery2 = entityManager.merge(delivery2);
@@ -134,11 +136,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 				tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
 		schedule.scheduleDelivery(c, delivery1);
 		// Change the hour of tomorrow to 7 to be at the beginning of the day
-<<<<<<< HEAD
 		tomorrow.set(Calendar.HOUR_OF_DAY, 7);
-=======
-		tomorrow.set(Calendar.HOUR_OF_DAY,7);
->>>>>>> pns-isa-devops/projet-isa-devops-20-team-b-20#132 first shot, doesnt work properly
 		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 	}
@@ -160,11 +158,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 				tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
 		schedule.scheduleDelivery(c, delivery1);
 		// Change the hour of tomorrow to 7 to be at the beginning of the day
-<<<<<<< HEAD
 		tomorrow.set(Calendar.HOUR_OF_DAY, 7);
-=======
-		tomorrow.set(Calendar.HOUR_OF_DAY,7);
->>>>>>> pns-isa-devops/projet-isa-devops-20-team-b-20#132 first shot, doesnt work properly
 		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 		schedule.scheduleDelivery(c, delivery2);
@@ -252,7 +246,6 @@ public class ScheduleTest extends AbstractScheduleTest {
 	@Test
 	public void getNextDeliveriesTest() throws Exception {
 		GregorianCalendar yesterday = new GregorianCalendar();
-<<<<<<< HEAD
 		yesterday.setTimeInMillis(now.getTimeInMillis() - 24l * 60l * 60l * 1000l);
 
 		// Change the hour of yesterday to 7 to be at the beginning of the day
@@ -261,25 +254,9 @@ public class ScheduleTest extends AbstractScheduleTest {
 		assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
 				yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0),
 				delivery1));
-<<<<<<< HEAD
 
 		// Test that a delivery of yesterday is not the next
 		assertNull(deliveryOrganizer.getNextDelivery(new GregorianCalendar()));
-=======
-		assertNull(deliveryOrganizer.getNextDelivery());
-=======
-		yesterday.setTimeInMillis(now.getTimeInMillis() - 24l*60l*60l*1000l);
-
-		// Change the hour of yesterday to 7 to be at the beginning of the day
-		yesterday.set(Calendar.HOUR_OF_DAY,7);
-		assertNull(deliveryOrganizer.getNextDelivery(yesterday));
-		assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
-		yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0), delivery1));
-
-		// Test that a delivery of yesterday is not the next
-		assertNull(deliveryOrganizer.getNextDelivery(new GregorianCalendar()));
->>>>>>> pns-isa-devops/projet-isa-devops-20-team-b-20#132 first shot, doesnt work properly
->>>>>>> pns-isa-devops/projet-isa-devops-20-team-b-20#132 first shot, doesnt work properly
 	}
 
 	/**

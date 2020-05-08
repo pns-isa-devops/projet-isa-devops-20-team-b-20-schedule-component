@@ -6,7 +6,6 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -52,10 +51,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         } else {
             throw new DroneNotFoundException("000");
         }
-
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
-        System.out.println(drone.getTimeSlots());
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
 
         List<Delivery> deliveries = drone.getTimeSlots().stream()
                 .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
@@ -106,7 +101,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                     ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
-                    ts = entityManager.merge(ts);
                     ts.setState(TimeState.CHARGING);
                 }
                 break;
@@ -116,11 +110,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
         drone = entityManager.merge(drone);
-
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
-        System.out.println(drone.getTimeSlots());
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
-
         delivery.setDrone(drone);
         return true;
     }
@@ -167,9 +156,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
         timeSlot.setDelivery(delivery);
-        entityManager.persist(timeSlot);
         drone.add(timeSlot);
-        entityManager.persist(drone);
     }
 
     /**
