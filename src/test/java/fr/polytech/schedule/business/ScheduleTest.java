@@ -91,6 +91,10 @@ public class ScheduleTest extends AbstractScheduleTest {
 	public void cleaningUp() throws Exception {
 		utx.begin();
 
+		for (Drone drone : drones) {
+			drone.getTimeSlots().clear();
+		}
+
 		delivery1 = entityManager.merge(delivery1);
 		entityManager.remove(delivery1);
 		delivery2 = entityManager.merge(delivery2);

@@ -130,7 +130,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                     ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.RESERVED_FOR_CHARGE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
-                    ts = entityManager.merge(ts);
                     ts.setState(TimeState.CHARGING);
                 }
                 break;
@@ -185,9 +184,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
         timeSlot.setDelivery(delivery);
-        entityManager.persist(timeSlot);
         drone.add(timeSlot);
-        entityManager.persist(drone);
     }
 
     /**
