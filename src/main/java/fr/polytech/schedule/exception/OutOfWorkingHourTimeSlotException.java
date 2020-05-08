@@ -2,11 +2,11 @@ package fr.polytech.schedule.exception;
 
 import java.io.Serializable;
 
-public class TimeslotUnvailableException extends Exception implements Serializable {
+public class OutOfWorkingHourTimeSlotException extends Exception implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    public TimeslotUnvailableException(String date) {
+    public OutOfWorkingHourTimeSlotException(String date) {
         super(date);
     }
 

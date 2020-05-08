@@ -8,7 +8,9 @@ import java.util.List;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.exception.DroneNotFoundException;
-import fr.polytech.schedule.exception.TimeslotUnvailableException;
+import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
+import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
+import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
 
 @Local
 public interface DeliveryScheduler {
@@ -20,10 +22,10 @@ public interface DeliveryScheduler {
      * @param delivery id
      * @return if scheduling a delivery to this hour is possible
      * @throws DroneNotFoundException
-     * @throws TimeslotUnvailableException
+     * @throws OutOfWorkingHourTimeSlotException
      */
     boolean scheduleDelivery(GregorianCalendar date, Delivery delivery)
-            throws DroneNotFoundException, TimeslotUnvailableException;
-    
-    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException;   
+            throws DroneNotFoundException, OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException;
+
+    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException;
 }
