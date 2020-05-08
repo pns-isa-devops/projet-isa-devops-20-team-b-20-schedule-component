@@ -166,7 +166,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
-        // timeSlot.setDrone(drone);
         timeSlot.setDelivery(delivery);
         entityManager.persist(timeSlot);
         drone.add(timeSlot);
@@ -188,7 +187,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
         timeSlot.setState(timeState);
-        // timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
     }
