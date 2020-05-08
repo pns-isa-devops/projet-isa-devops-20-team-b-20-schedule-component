@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -83,7 +81,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             initDailyTimeSlots(drone);
         }
 
-        if(date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
+        if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
             throw new TimeslotUnvailableException(date.toString());
         // Stage 1 : Check that the asked timeslot is available
         if (!dateIsAvailable(date, drone))
@@ -100,11 +98,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         for (int i = 0; i < timeStates.size(); i++) {
             if (i == index) {
-                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE && timeStates.get(i) != TimeState.CHARGING; i++);
+                for (; i < timeStates.size() && timeStates.get(i) != TimeState.UNAVAILABLE
+                        && timeStates.get(i) != TimeState.CHARGING; i++)
+                    ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.UNAVAILABLE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
                     ts = entityManager.merge(ts);
-                   ts.setState(TimeState.CHARGING);
+                    ts.setState(TimeState.CHARGING);
                 }
                 break;
             }
@@ -118,8 +118,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     @Override
-    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException
-    {
+    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException {
         Optional<Drone> d = findById(droneID);
         Drone drone;
         if (d.isPresent()) {
@@ -127,12 +126,12 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         } else {
             throw new DroneNotFoundException(droneID);
         }
-        return convertTimeSlotsToList(drone.getTimeSlots()).stream().map(e -> e == null ? TimeState.AVAILABLE : e).collect(Collectors.toList());
+        return convertTimeSlotsToList(drone.getTimeSlots()).stream().map(e -> e == null ? TimeState.AVAILABLE : e)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Check if the date can be use for a delivery TODO refactor pour que la méthode
-     * cherche dans TOUS les drones.
+     * Check if the date can be use for a delivery
      *
      * @param date
      * @return boolean
@@ -238,7 +237,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         GregorianCalendar now = new GregorianCalendar();
         GregorianCalendar startingDay = new GregorianCalendar(now.get(GregorianCalendar.YEAR),
                 now.get(GregorianCalendar.MONTH), now.get(GregorianCalendar.DAY_OF_MONTH), STARTING_HOUR, 0);
-        long millisFromStartingDay = index * 15 * 60 * 1000;
+        long millisFromStartingDay = (long) index * 15 * 60 * 1000;
         long millisNow = startingDay.getTimeInMillis() + millisFromStartingDay;
         GregorianCalendar date = new GregorianCalendar();
         date.setTimeInMillis(millisNow);
