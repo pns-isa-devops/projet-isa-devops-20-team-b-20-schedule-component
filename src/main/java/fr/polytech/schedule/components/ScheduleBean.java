@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import javax.ejb.LocalBean;
@@ -25,12 +28,16 @@ import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.exception.DroneNotFoundException;
 import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
 import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
+import fr.polytech.schedule.exception.OutsideOfDeliveryHoursException;
+import fr.polytech.schedule.exception.TimeslotUnvailableException;
 import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
 
 @Stateless
 @LocalBean
 @Named("schedule")
 public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
+
+    private static final Logger log = Logger.getLogger(ScheduleBean.class.getName());
 
     public static final int STARTING_HOUR = 8;
     public static final int CLOSING_HOUR = 18;
@@ -63,7 +70,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException {
         List<Drone> drones = this.getAllDrones();
         for (Drone d : drones) {
-            if (dateIsAvailable(date, d)) {
+            if (dateIsAvailable(date, d) == TimeState.AVAILABLE) {
                 return d;
             }
         }
@@ -89,12 +96,9 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     @Override
-    public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) throws OutOfWorkingHourTimeSlotException,
-            NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
 
-        // Stage 1 : Check that the asked timeSlot is within working hours
-        if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
-            throw new OutOfWorkingHourTimeSlotException(date.toString());
+    public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) throws ZeroDronesInWarehouseException,
+            NoFreeDroneAtThisTimeSlotException, OutsideOfDeliveryHoursException, TimeslotUnvailableException {
 
         delivery = entityManager.merge(delivery);
         Drone drone = getFreeDrone(date);
@@ -104,8 +108,14 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             initDailyTimeSlots(drone);
         }
 
-        // Stage 2 : Set the timeslot
+        if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR) {
+            throw new OutsideOfDeliveryHoursException(STARTING_HOUR, CLOSING_HOUR);
+        }
 
+        // Stage 1 : Check that the asked timeslot is available
+        checkAvailability(date, drone);
+
+        // Stage 2 : Set the timeslot
         createDeliveryTimeSlot(date, delivery, drone);
 
         // UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
@@ -129,11 +139,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
         drone = entityManager.merge(drone);
-
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
-        System.out.println(drone.getTimeSlots());
-        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
-
         delivery.setDrone(drone);
         return true;
     }
@@ -157,13 +162,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param date
      * @return boolean
      */
-    public boolean dateIsAvailable(GregorianCalendar date, Drone drone) {
+    public TimeState dateIsAvailable(GregorianCalendar date, Drone drone) {
         for (TimeSlot ts : drone.getTimeSlots()) {
             if (ts.getDate().get(Calendar.HOUR_OF_DAY) == date.get(Calendar.HOUR_OF_DAY)
                     && ts.getDate().get(Calendar.MINUTE) == date.get(Calendar.MINUTE))
-                return false;
+                return ts.getState();
         }
-        return true;
+        return TimeState.AVAILABLE;
     }
 
     /**
@@ -174,13 +179,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @throws OutOfWorkingHourTimeSlotException
      */
     public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery, Drone drone)
-            throws OutOfWorkingHourTimeSlotException {
-
-        // This should be already checked beforehand
-        if (!this.dateIsAvailable(date, drone)) {
-            throw new OutOfWorkingHourTimeSlotException(date.toString());
-        }
-
+            throws TimeslotUnvailableException {
+        checkAvailability(date, drone);
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
@@ -209,6 +209,29 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         // timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
+    }
+
+    public Optional<Drone> findById(String id) {
+        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
+        Root<Drone> root = criteria.from(Drone.class);
+        criteria.select(root).where(builder.equal(root.get("droneId"), id));
+
+        TypedQuery<Drone> query = entityManager.createQuery(criteria);
+        try {
+            return Optional.of(query.getSingleResult());
+        } catch (NoResultException e) {
+            log.log(Level.FINEST, "No result for [" + id + "]", e);
+            return Optional.empty();
+        }
+    }
+
+    private void checkAvailability(GregorianCalendar date, Drone drone) throws TimeslotUnvailableException {
+        TimeState ts = dateIsAvailable(date, drone);
+        if (ts != TimeState.AVAILABLE) {
+            String time = date.get(GregorianCalendar.HOUR) + ":" + date.get(GregorianCalendar.MINUTE);
+            throw new TimeslotUnvailableException(time, ts.toString());
+        }
     }
 
     private void initDailyTimeSlots(Drone drone) {
