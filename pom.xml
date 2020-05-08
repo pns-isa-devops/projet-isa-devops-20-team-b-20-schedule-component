@@ -12,7 +12,6 @@
 
     <properties>
         <versions.projet-isa-devops-20-team-b-20-entities>2.0.5-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-entities>
-        <!--<versions.projet-isa-devops-20-team-b-20-warehouse-component>1.2-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-warehouse-component>-->
     </properties>
 
     <dependencies>
@@ -21,11 +20,6 @@
             <artifactId>projet-isa-devops-20-team-b-20-entities</artifactId>
             <version>${versions.projet-isa-devops-20-team-b-20-entities}</version>
         </dependency>
-        <!--<dependency>-->
-        <!--<groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>-->
-        <!--<artifactId>projet-isa-devops-20-team-b-20-warehouse-component</artifactId>-->
-        <!--<version>${versions.projet-isa-devops-20-team-b-20-warehouse-component}</version>-->
-        <!--</dependency>-->
     </dependencies>
 
 
