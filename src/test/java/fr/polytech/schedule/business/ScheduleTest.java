@@ -1,5 +1,32 @@
 package fr.polytech.schedule.business;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.ejb.EJB;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.UserTransaction;
+
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
+import org.jboss.arquillian.transaction.api.annotation.Transactional;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import arquillian.AbstractScheduleTest;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
@@ -12,27 +39,6 @@ import fr.polytech.schedule.exception.DroneNotFoundException;
 import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
 import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
 import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
-import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.arquillian.transaction.api.annotation.TransactionMode;
-import org.jboss.arquillian.transaction.api.annotation.Transactional;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import javax.ejb.EJB;
-import javax.inject.Inject;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.UserTransaction;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @RunWith(Arquillian.class)
 @Transactional(TransactionMode.COMMIT)
@@ -133,7 +139,7 @@ public class ScheduleTest extends AbstractScheduleTest {
         GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
                 tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
         schedule.scheduleDelivery(c, delivery1);
-        Delivery next = schedule.getNextDelivery();
+        Delivery next = schedule.getNextDelivery(tomorrow);
         assertEquals(delivery1, next);
     }
 
@@ -153,7 +159,7 @@ public class ScheduleTest extends AbstractScheduleTest {
         GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
                 tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
         schedule.scheduleDelivery(c, delivery1);
-        Delivery next = schedule.getNextDelivery();
+        Delivery next = schedule.getNextDelivery(tomorrow);
         assertEquals(delivery1, next);
         schedule.scheduleDelivery(c, delivery2);
     }
@@ -233,10 +239,10 @@ public class ScheduleTest extends AbstractScheduleTest {
     public void getNextDeliveriesTest() throws DroneNotFoundException, OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
         GregorianCalendar yesterday = new GregorianCalendar();
         yesterday.setTimeInMillis(now.getTimeInMillis() - 24l * 60l * 60l * 1000l);
-        assertNull(deliveryOrganizer.getNextDelivery());
+        assertNull(deliveryOrganizer.getNextDelivery(yesterday));
         assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
                 yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0), delivery1));
-        assertNull(deliveryOrganizer.getNextDelivery());
+        assertNull(deliveryOrganizer.getNextDelivery(yesterday));
     }
 
     /**

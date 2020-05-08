@@ -1,13 +1,11 @@
 package fr.polytech.schedule.components;
 
-import fr.polytech.entities.Delivery;
-import fr.polytech.entities.Drone;
-import fr.polytech.entities.TimeSlot;
-import fr.polytech.entities.TimeState;
-import fr.polytech.schedule.exception.DroneNotFoundException;
-import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
-import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
-import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.ejb.LocalBean;
 import javax.ejb.Stateless;
@@ -19,9 +17,15 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
+
+import fr.polytech.entities.Delivery;
+import fr.polytech.entities.Drone;
+import fr.polytech.entities.TimeSlot;
+import fr.polytech.entities.TimeState;
+import fr.polytech.schedule.exception.DroneNotFoundException;
+import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
+import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
+import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
 
 @Stateless
 @LocalBean
@@ -32,41 +36,31 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     public static final int CLOSING_HOUR = 18;
     public static final int NUMBER_OF_SLOT_PER_DAYS = 40; // end of days 18h
 
-    private static final Logger log = Logger.getLogger(Logger.class.getName());
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
-    public Delivery getNextDelivery() {
+    public Delivery getNextDelivery(GregorianCalendar date) throws ZeroDronesInWarehouseException {
         List<Drone> drones;
-        try {
-            drones = this.getAllDrones();
-        } catch (ZeroDronesInWarehouseException e) {
-            return null;
-        }
-        //Drone drone = drones.get(0);
-
-        List<Delivery> deliveries = new ArrayList<>();
+        drones = getAllDrones();
+        List<TimeSlot> timeslots = new ArrayList<>();
 
         for (Drone drone : drones) {
-            deliveries.addAll(drone.getTimeSlots().stream()
-                    .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
-                    .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
-                    .collect(Collectors.toList()));
+            timeslots.addAll(drone.getTimeSlots());
         }
 
-        /*List<Delivery> deliveries = drone.getTimeSlots().stream()
-                .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
-                .filter(timeSlot -> timeSlot.getDate().after(new GregorianCalendar())).map(TimeSlot::getDelivery)
-                .collect(Collectors.toList());*/
+        List<Delivery> deliveries = timeslots.stream().filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
+                .filter(timeSlot -> timeSlot.getDate().after(date)).map(TimeSlot::getDelivery)
+                .collect(Collectors.toList());
 
-        if (deliveries.isEmpty()) {
-            return null;
+        if (!deliveries.isEmpty()) {
+            return deliveries.get(0);
         }
-        return deliveries.get(0);
+        return null;
     }
 
-    public Drone getFreeDrone(GregorianCalendar date) throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException {
+    public Drone getFreeDrone(GregorianCalendar date)
+            throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException {
         List<Drone> drones = this.getAllDrones();
         for (Drone d : drones) {
             if (dateIsAvailable(date, d)) {
@@ -95,8 +89,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     @Override
-    public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery)
-            throws OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
+    public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) throws OutOfWorkingHourTimeSlotException,
+            NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
 
         // Stage 1 : Check that the asked timeSlot is within working hours
         if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
@@ -121,7 +115,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         for (int i = 0; i < timeStates.size(); i++) {
             if (i == index) {
-                for (; i < timeStates.size() && timeStates.get(i) != TimeState.RESERVED_FOR_CHARGE && timeStates.get(i) != TimeState.CHARGING; i++)
+                for (; i < timeStates.size() && timeStates.get(i) != TimeState.RESERVED_FOR_CHARGE
+                        && timeStates.get(i) != TimeState.CHARGING; i++)
                     ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.RESERVED_FOR_CHARGE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
@@ -134,18 +129,22 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
         drone = entityManager.merge(drone);
+
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+        System.out.println(drone.getTimeSlots());
+        System.out.println("- - -  - - - - - - - - - -  - - - - - - - - -  --");
+
         delivery.setDrone(drone);
         return true;
     }
 
     @Override
-    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException, ZeroDronesInWarehouseException {
+    public List<TimeState> getCurrentPlanning(String droneID)
+            throws DroneNotFoundException, ZeroDronesInWarehouseException {
         for (Drone drone : this.getAllDrones()) {
             if (drone.getDroneId().equals(droneID)) {
-                return convertTimeSlotsToList(drone.getTimeSlots()).
-                        stream().
-                        map(e -> e == null ? TimeState.AVAILABLE : e).
-                        collect(Collectors.toList());
+                return convertTimeSlotsToList(drone.getTimeSlots()).stream()
+                        .map(e -> e == null ? TimeState.AVAILABLE : e).collect(Collectors.toList());
             }
         }
         throw new DroneNotFoundException(droneID);
@@ -185,10 +184,11 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
-        timeSlot.setDrone(drone);
+        // timeSlot.setDrone(drone);
         timeSlot.setDelivery(delivery);
         entityManager.persist(timeSlot);
         drone.add(timeSlot);
+        entityManager.persist(drone);
     }
 
     /**
@@ -206,7 +206,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
         timeSlot.setState(timeState);
-        timeSlot.setDrone(drone);
+        // timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
     }
@@ -277,7 +277,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param timeslots
      * @return list of timestate
      */
-    private List<TimeState> convertTimeSlotsToList(Set<TimeSlot> timeslots) {
+    private List<TimeState> convertTimeSlotsToList(List<TimeSlot> timeslots) {
         List<TimeSlot> timeslots2 = new ArrayList<>(timeslots);
         TimeState[] schedule = new TimeState[NUMBER_OF_SLOT_PER_DAYS];
         Arrays.fill(schedule, null);
@@ -296,7 +296,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      * @param date
      * @return delivery
      */
-    public TimeSlot findTimeSlotAtDate(Set<TimeSlot> timeslots, GregorianCalendar date) {
+    public TimeSlot findTimeSlotAtDate(List<TimeSlot> timeslots, GregorianCalendar date) {
         for (TimeSlot ts : timeslots) {
             if (ts.getDate().compareTo(date) == 0)
                 return ts;
