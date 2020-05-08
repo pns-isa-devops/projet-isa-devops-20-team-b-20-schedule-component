@@ -11,7 +11,7 @@ public class OutOfWorkingHourTimeSlotException extends Exception implements Seri
     }
 
     @Override
-    public String toString() {
-        return "The time : " + getMessage() + "slot already has a delivery";
+    public String getMessage() {
+        return "The slot is not within working hours.";
     }
 }

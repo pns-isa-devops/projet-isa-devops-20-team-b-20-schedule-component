@@ -7,6 +7,6 @@ import fr.polytech.schedule.exception.DroneNotFoundException;
 
 @Local
 public interface DeliveryOrganizer {
-    Delivery getNextDelivery() throws DroneNotFoundException;
+    Delivery getNextDelivery();
 
 }

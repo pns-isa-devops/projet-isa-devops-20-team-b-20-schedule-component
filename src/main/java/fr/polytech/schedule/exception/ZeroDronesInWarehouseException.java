@@ -1,6 +1,8 @@
 package fr.polytech.schedule.exception;
 
-public class ZeroDronesInWarehouseException extends Throwable {
+import java.io.Serializable;
+
+public class ZeroDronesInWarehouseException extends Exception implements Serializable {
 
     public ZeroDronesInWarehouseException() {
         super();
@@ -8,11 +10,6 @@ public class ZeroDronesInWarehouseException extends Throwable {
 
     @Override
     public String getMessage() {
-        return "There is no registered drone in the warehouse.";
-    }
-
-    @Override
-    public String toString() {
         return "There is no registered drone in the warehouse.";
     }
 

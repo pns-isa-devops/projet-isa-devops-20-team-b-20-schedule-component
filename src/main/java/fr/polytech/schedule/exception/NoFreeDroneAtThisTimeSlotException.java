@@ -1,6 +1,8 @@
 package fr.polytech.schedule.exception;
 
-public class NoFreeDroneAtThisTimeSlotException extends Throwable {
+import java.io.Serializable;
+
+public class NoFreeDroneAtThisTimeSlotException extends Exception implements Serializable {
 
     public NoFreeDroneAtThisTimeSlotException() {
         super();
@@ -8,11 +10,6 @@ public class NoFreeDroneAtThisTimeSlotException extends Throwable {
 
     @Override
     public String getMessage() {
-        return "There is no free drone for this time slot.";
-    }
-
-    @Override
-    public String toString() {
         return "There is no free drone for this time slot.";
     }
 

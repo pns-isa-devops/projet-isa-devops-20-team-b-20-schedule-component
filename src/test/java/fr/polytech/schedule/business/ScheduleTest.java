@@ -155,7 +155,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 
     // Fonctionnel
     @Test
-    public void scheduleDeliveryTestOpeningHour() throws DroneNotFoundException, OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
+    public void scheduleDeliveryTestOpeningHour() throws OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
         GregorianCalendar tomorrow = new GregorianCalendar();
         tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l * 60l * 60l * 1000l);
         GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
@@ -165,7 +165,6 @@ public class ScheduleTest extends AbstractScheduleTest {
         assertEquals(delivery1, next);
     }
 
-    //@Test(expected = OutOfWorkingHourTimeSlotException.class)
     @Test(expected = OutOfWorkingHourTimeSlotException.class)
     public void scheduleDeliveryTestClosingHour() throws OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException {
         GregorianCalendar tomorrow = new GregorianCalendar();
@@ -175,9 +174,8 @@ public class ScheduleTest extends AbstractScheduleTest {
         schedule.scheduleDelivery(c, delivery1);
     }
 
-    //@Test(expected = OutOfWorkingHourTimeSlotException.class)
     @Test(expected = NoFreeDroneAtThisTimeSlotException.class)
-    public void scheduleDeliveryTestAtTheSameHour() throws NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException, OutOfWorkingHourTimeSlotException, DroneNotFoundException {
+    public void scheduleDeliveryTestAtTheSameHour() throws NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException, OutOfWorkingHourTimeSlotException {
         GregorianCalendar tomorrow = new GregorianCalendar();
         tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l * 60l * 60l * 1000l);
         GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),

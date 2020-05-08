@@ -38,20 +38,21 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     private EntityManager entityManager;
 
     @Override
-    public Delivery getNextDelivery() throws DroneNotFoundException {
-        /*List<Drone> drones;
+    public Delivery getNextDelivery() {
+        List<Drone> drones;
         try {
             drones = this.getAllDrones();
         } catch (ZeroDronesInWarehouseException e) {
             return null;
-        }*/
-        Drone drone;
+        }
+        Drone drone = drones.get(0); // TODO search on all drones
+        /*Drone drone;
         Optional<Drone> d = this.findById("000"); //todo n drone
         if (d.isPresent()) {
             drone = d.get();
         } else {
             throw new DroneNotFoundException("000");
-        }
+        }*/
 
         List<Delivery> deliveries = drone.getTimeSlots().stream()
                 .filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
@@ -86,8 +87,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         } catch (NoResultException e) {
             throw new ZeroDronesInWarehouseException();
         }
-        //drones = entityManager.createQuery(
-        //        "SELECT d FROM Drone d").getResultList();
     }
 
     @Override
@@ -98,26 +97,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR)
             throw new OutOfWorkingHourTimeSlotException(date.toString());
 
-
         delivery = entityManager.merge(delivery);
         Drone drone = getFreeDrone(date);
-
-/*        Drone drone;
-        Optional<Drone> d = this.findById("000");
-        if (d.isPresent()) {
-            drone = d.get();
-        } else {
-            throw new DroneNotFoundException("000");
-        }*/
 
         // If not initialized
         if (drone.getTimeSlots().size() == 0) {
             initDailyTimeSlots(drone);
         }
-
-        // Check if drone is available at this timeslot todo remove this as getFreeDrone already makes sure of this
-        //if (!dateIsAvailable(date, drone))
-        //    throw new OutOfWorkingHourTimeSlotException(date.toString());
 
         // Stage 2 : Set the timeslot
 
@@ -130,7 +116,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
         for (int i = 0; i < timeStates.size(); i++) {
             if (i == index) {
-                for (; i < timeStates.size() && timeStates.get(i) != TimeState.RESERVED_FOR_CHARGE && timeStates.get(i) != TimeState.CHARGING; i++);
+                for (; i < timeStates.size() && timeStates.get(i) != TimeState.RESERVED_FOR_CHARGE && timeStates.get(i) != TimeState.CHARGING; i++)
+                    ;
                 for (; i < timeStates.size() && timeStates.get(i) == TimeState.RESERVED_FOR_CHARGE; i++) {
                     TimeSlot ts = findTimeSlotAtDate(drone.getTimeSlots(), getDateFromIndex(i));
                     ts = entityManager.merge(ts);
@@ -147,16 +134,17 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     }
 
     @Override
-    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException {
-        Optional<Drone> d = findById(droneID);
-        Drone drone;
-        if (d.isPresent()) {
-            drone = d.get();
-        } else {
-            throw new DroneNotFoundException(droneID);
+    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException, ZeroDronesInWarehouseException {
+        for (Drone drone : this.getAllDrones()) {
+            if (drone.getDroneId() == droneID) {
+                return convertTimeSlotsToList(drone.getTimeSlots()).
+                        stream().
+                        map(e -> e == null ? TimeState.AVAILABLE : e).
+                        collect(Collectors.toList());
+            }
         }
-        return convertTimeSlotsToList(drone.getTimeSlots()).stream().map(e -> e == null ? TimeState.AVAILABLE : e)
-                .collect(Collectors.toList());
+        throw new DroneNotFoundException(droneID);
+
     }
 
     /**
@@ -216,21 +204,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         timeSlot.setDrone(drone);
         entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
-    }
-
-    public Optional<Drone> findById(String id) {
-        CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Drone> criteria = builder.createQuery(Drone.class);
-        Root<Drone> root = criteria.from(Drone.class);
-        criteria.select(root).where(builder.equal(root.get("droneId"), id));
-
-        TypedQuery<Drone> query = entityManager.createQuery(criteria);
-        try {
-            return Optional.of(query.getSingleResult());
-        } catch (NoResultException e) {
-            log.log(Level.FINEST, "No result for [" + id + "]", e);
-            return Optional.empty();
-        }
     }
 
     private void initDailyTimeSlots(Drone drone) {

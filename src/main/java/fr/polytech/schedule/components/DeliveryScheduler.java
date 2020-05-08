@@ -27,5 +27,5 @@ public interface DeliveryScheduler {
     boolean scheduleDelivery(GregorianCalendar date, Delivery delivery)
             throws DroneNotFoundException, OutOfWorkingHourTimeSlotException, NoFreeDroneAtThisTimeSlotException, ZeroDronesInWarehouseException;
 
-    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException;
+    public List<TimeState> getCurrentPlanning(String droneID) throws DroneNotFoundException, ZeroDronesInWarehouseException;
 }
