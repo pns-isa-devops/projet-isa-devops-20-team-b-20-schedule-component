@@ -117,7 +117,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             throw new DeliveryAlreadyScheduledException(delivery, date);
         }
 
-        if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR) {
+        if (date.get(GregorianCalendar.HOUR_OF_DAY) < STARTING_HOUR || date.get(GregorianCalendar.HOUR_OF_DAY) >= CLOSING_HOUR) {
             throw new OutsideOfDeliveryHoursException(STARTING_HOUR, CLOSING_HOUR);
         }
 
