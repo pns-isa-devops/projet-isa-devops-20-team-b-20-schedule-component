@@ -25,6 +25,7 @@ import fr.polytech.entities.Delivery;
 import fr.polytech.entities.Drone;
 import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
+import fr.polytech.schedule.exception.DeliveryAlreadyScheduledException;
 import fr.polytech.schedule.exception.DroneNotFoundException;
 import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
 import fr.polytech.schedule.exception.OutsideOfDeliveryHoursException;
@@ -101,7 +102,8 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     @Override
 
     public boolean scheduleDelivery(GregorianCalendar date, Delivery delivery) throws ZeroDronesInWarehouseException,
-            NoFreeDroneAtThisTimeSlotException, OutsideOfDeliveryHoursException, TimeslotUnvailableException {
+            NoFreeDroneAtThisTimeSlotException, OutsideOfDeliveryHoursException, TimeslotUnvailableException,
+            DeliveryAlreadyScheduledException {
 
         delivery = entityManager.merge(delivery);
         Drone drone = entityManager.merge(getFreeDrone(date));
@@ -109,6 +111,10 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         // If not initialized
         if (drone.getTimeSlots().isEmpty()) {
             initDailyTimeSlots(drone);
+        }
+
+        if(delivery.getDrone() != null) {
+            throw new DeliveryAlreadyScheduledException(delivery, date);
         }
 
         if (date.get(GregorianCalendar.HOUR) < STARTING_HOUR || date.get(GregorianCalendar.HOUR) >= CLOSING_HOUR) {
