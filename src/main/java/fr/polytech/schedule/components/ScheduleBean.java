@@ -49,8 +49,14 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
     public Delivery getNextDelivery(GregorianCalendar date) throws ZeroDronesInWarehouseException {
         List<TimeSlot> timeslots = new ArrayList<>();
 
-        for (Drone drone : getAllDrones()) {
+        List<Drone> drones = getAllDrones();
+
+        for (Drone drone : drones) {
             timeslots.addAll(drone.getTimeSlots());
+        }
+
+        for (Drone drone : drones) {
+            entityManager.detach(drone);
         }
 
         List<Delivery> deliveries = timeslots.stream().filter(timeSlot -> timeSlot.getState() == TimeState.DELIVERY)
