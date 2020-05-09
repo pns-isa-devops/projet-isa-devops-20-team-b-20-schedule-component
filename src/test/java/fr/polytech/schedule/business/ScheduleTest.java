@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,6 +37,7 @@ import fr.polytech.schedule.components.DeliveryOrganizer;
 import fr.polytech.schedule.components.DeliveryScheduler;
 import fr.polytech.schedule.components.ScheduleBean;
 import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
+import fr.polytech.schedule.exception.OutsideOfDeliveryHoursException;
 import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
 
 @RunWith(Arquillian.class)
@@ -66,7 +68,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 	private GregorianCalendar now;
 
 	@Before
-	public void init() {
+	public void init() throws Exception {
 
 		this.drones = new ArrayList<>();
 		this.drones.add(new Drone("000"));
@@ -91,8 +93,10 @@ public class ScheduleTest extends AbstractScheduleTest {
 	public void cleaningUp() throws Exception {
 		utx.begin();
 
-		for (Drone drone : drones) {
-			drone.getTimeSlots().clear();
+		Drone d;
+		for (int i = 0; i < this.drones.size(); i++) {
+			d = entityManager.merge(this.drones.get(i));
+			entityManager.remove(d);
 		}
 
 		delivery1 = entityManager.merge(delivery1);
@@ -101,15 +105,9 @@ public class ScheduleTest extends AbstractScheduleTest {
 		entityManager.remove(delivery2);
 		delivery3 = entityManager.merge(delivery3);
 		entityManager.remove(delivery3);
-
 		parcel = entityManager.merge(parcel);
 		entityManager.remove(parcel);
 
-		for (int i = 0; i < this.drones.size(); i++) {
-			this.drones.set(i, entityManager.merge(this.drones.get(i)));
-			entityManager.remove(this.drones.get(i));
-			this.drones.set(i, null);
-		}
 		utx.commit();
 	}
 
@@ -139,12 +137,15 @@ public class ScheduleTest extends AbstractScheduleTest {
 		tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l * 60l * 60l * 1000l);
 		GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
 				tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
+		delivery1 = entityManager.merge(delivery1);
 		schedule.scheduleDelivery(c, delivery1);
+		tomorrow.set(Calendar.HOUR_OF_DAY, 7);
 		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 	}
 
-	@Test(expected = Exception.class)
+	@Test(expected = OutsideOfDeliveryHoursException.class)
+
 	public void scheduleDeliveryTestClosingHour() throws Exception {
 		GregorianCalendar tomorrow = new GregorianCalendar();
 		tomorrow.setTimeInMillis(now.getTimeInMillis() + 24l * 60l * 60l * 1000l);
@@ -160,6 +161,7 @@ public class ScheduleTest extends AbstractScheduleTest {
 		GregorianCalendar c = new GregorianCalendar(tomorrow.get(GregorianCalendar.YEAR),
 				tomorrow.get(GregorianCalendar.MONTH), tomorrow.get(GregorianCalendar.DAY_OF_MONTH), 8, 0);
 		schedule.scheduleDelivery(c, delivery1);
+		tomorrow.set(Calendar.HOUR_OF_DAY, 7);
 		Delivery next = schedule.getNextDelivery(tomorrow);
 		assertEquals(delivery1, next);
 		schedule.scheduleDelivery(c, delivery2);
@@ -248,11 +250,15 @@ public class ScheduleTest extends AbstractScheduleTest {
 	public void getNextDeliveriesTest() throws Exception {
 		GregorianCalendar yesterday = new GregorianCalendar();
 		yesterday.setTimeInMillis(now.getTimeInMillis() - 24l * 60l * 60l * 1000l);
+		// Change the hour of yesterday to 7 to be at the beginning of the day
+		yesterday.set(Calendar.HOUR_OF_DAY, 7);
+
 		assertNull(deliveryOrganizer.getNextDelivery(yesterday));
 		assertTrue(deliveryScheduler.scheduleDelivery(new GregorianCalendar(yesterday.get(GregorianCalendar.YEAR),
 				yesterday.get(GregorianCalendar.MONTH), yesterday.get(GregorianCalendar.DAY_OF_MONTH), 8, 0),
 				delivery1));
-		assertNull(deliveryOrganizer.getNextDelivery(yesterday));
+		// Test that a delivery of yesterday is not the next
+		assertNull(deliveryOrganizer.getNextDelivery(new GregorianCalendar()));
 	}
 
 	/**

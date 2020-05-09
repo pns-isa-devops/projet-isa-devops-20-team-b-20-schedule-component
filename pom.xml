@@ -8,10 +8,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>projet-isa-devops-20-team-b-20-schedule-component</artifactId>
-    <version>2.0.5-SNAPSHOT</version>
+    <version>2.0.6-SNAPSHOT</version>
 
     <properties>
-        <versions.projet-isa-devops-20-team-b-20-entities>2.0.5-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-entities>
+        <versions.projet-isa-devops-20-team-b-20-entities>2.0.6-SNAPSHOT</versions.projet-isa-devops-20-team-b-20-entities>
     </properties>
 
     <dependencies>

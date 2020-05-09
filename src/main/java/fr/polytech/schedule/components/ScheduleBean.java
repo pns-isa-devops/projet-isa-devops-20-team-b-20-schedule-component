@@ -27,7 +27,6 @@ import fr.polytech.entities.TimeSlot;
 import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.exception.DroneNotFoundException;
 import fr.polytech.schedule.exception.NoFreeDroneAtThisTimeSlotException;
-import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
 import fr.polytech.schedule.exception.OutsideOfDeliveryHoursException;
 import fr.polytech.schedule.exception.TimeslotUnvailableException;
 import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
@@ -48,11 +47,9 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     @Override
     public Delivery getNextDelivery(GregorianCalendar date) throws ZeroDronesInWarehouseException {
-        List<Drone> drones;
-        drones = getAllDrones();
         List<TimeSlot> timeslots = new ArrayList<>();
 
-        for (Drone drone : drones) {
+        for (Drone drone : getAllDrones()) {
             timeslots.addAll(drone.getTimeSlots());
         }
 
@@ -68,13 +65,13 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
 
     public Drone getFreeDrone(GregorianCalendar date)
             throws ZeroDronesInWarehouseException, NoFreeDroneAtThisTimeSlotException {
-        List<Drone> drones = this.getAllDrones();
-        for (Drone d : drones) {
+        for (Drone d : getAllDrones()) {
             if (dateIsAvailable(date, d) == TimeState.AVAILABLE) {
                 return d;
             }
         }
-        throw new NoFreeDroneAtThisTimeSlotException();
+        String time = date.get(GregorianCalendar.HOUR) + ":" + date.get(GregorianCalendar.MINUTE);
+        throw new NoFreeDroneAtThisTimeSlotException(time);
     }
 
     private List<Drone> getAllDrones() throws ZeroDronesInWarehouseException {
@@ -101,7 +98,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
             NoFreeDroneAtThisTimeSlotException, OutsideOfDeliveryHoursException, TimeslotUnvailableException {
 
         delivery = entityManager.merge(delivery);
-        Drone drone = getFreeDrone(date);
+        Drone drone = entityManager.merge(getFreeDrone(date));
 
         // If not initialized
         if (drone.getTimeSlots().isEmpty()) {
@@ -135,10 +132,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                 break;
             }
         }
-
-        // END UPDATE THE PLANNING - - - - - - - - - - - - - - - - - - -
-        drone = entityManager.merge(drone);
-        delivery.setDrone(drone);
         return true;
     }
 
@@ -183,8 +176,9 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         delivery = entityManager.merge(delivery);
         drone = entityManager.merge(drone);
         TimeSlot timeSlot = new TimeSlot(date, TimeState.DELIVERY);
-        timeSlot.setDelivery(delivery);
         drone.add(timeSlot);
+        timeSlot.setDelivery(delivery);
+        delivery.setDrone(drone);
     }
 
     /**
@@ -202,7 +196,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         TimeSlot timeSlot = new TimeSlot();
         timeSlot.setDate(date);
         timeSlot.setState(timeState);
-        entityManager.persist(timeSlot);
         drone.getTimeSlots().add(timeSlot);
     }
 

@@ -8,7 +8,6 @@ import java.util.List;
 import fr.polytech.entities.Delivery;
 import fr.polytech.entities.TimeState;
 import fr.polytech.schedule.exception.DroneNotFoundException;
-import fr.polytech.schedule.exception.OutOfWorkingHourTimeSlotException;
 import fr.polytech.schedule.exception.OutsideOfDeliveryHoursException;
 import fr.polytech.schedule.exception.TimeslotUnvailableException;
 import fr.polytech.schedule.exception.ZeroDronesInWarehouseException;
