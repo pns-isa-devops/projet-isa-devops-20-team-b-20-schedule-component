@@ -3,15 +3,15 @@
     <parent>
         <artifactId>projet-isa-devops-20-team-b-20-drone-delivery</artifactId>
         <groupId>fr.unice.polytech.isadevops.dronedelivery</groupId>
-        <version>3.0</version>
+        <version>3.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>projet-isa-devops-20-team-b-20-schedule-component</artifactId>
-    <version>3.0</version>
+    <version>3.1</version>
 
     <properties>
-        <versions.projet-isa-devops-20-team-b-20-entities>3.0</versions.projet-isa-devops-20-team-b-20-entities>
+        <versions.projet-isa-devops-20-team-b-20-entities>3.1</versions.projet-isa-devops-20-team-b-20-entities>
     </properties>
 
     <dependencies>
