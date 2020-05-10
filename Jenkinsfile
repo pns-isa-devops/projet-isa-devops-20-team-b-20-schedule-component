@@ -51,8 +51,10 @@ pipeline{
                 }
                 stage("Tests") {
                     steps {
-                        echo "Unit tests module"
-                        sh "mvn test"
+                        configFileProvider([configFile(fileId: MVN_SETTING_PROVIDER, variable: "MAVEN_SETTINGS")]) {
+                            echo "Unit tests module"
+                            sh "mvn -s $MAVEN_SETTINGS test"
+                        }
                     }
                 }
                 stage('Mutations') {
