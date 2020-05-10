@@ -13,25 +13,19 @@ public class DeliveryAlreadyScheduledException extends Exception implements Seri
     private static final long serialVersionUID = 1L;
 
     private String deliveryId;
-    private String date;
 
-    public DeliveryAlreadyScheduledException(String deliveryId, String date) {
+    public DeliveryAlreadyScheduledException(String deliveryId) {
         this.deliveryId = deliveryId;
-        this.date = date;
     }
 
-    public DeliveryAlreadyScheduledException(Delivery delivery, GregorianCalendar date)
+    public DeliveryAlreadyScheduledException(Delivery delivery)
     {
-        this(delivery.getDeliveryId(), date.toString());
-    }
-
-    public DeliveryAlreadyScheduledException(String message, Throwable cause) {
-        super(message, cause);
+        this(delivery.getDeliveryId());
     }
 
     @Override
     public String getMessage() {
-        return "The delivery : " + deliveryId + " is already scheduled for " + date;
+        return "The delivery : " + deliveryId + " is already scheduled for another hour";
     }
 
 }

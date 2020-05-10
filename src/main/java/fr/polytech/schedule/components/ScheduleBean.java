@@ -114,7 +114,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
         }
 
         if(delivery.getDrone() != null) {
-            throw new DeliveryAlreadyScheduledException(delivery, date);
+            throw new DeliveryAlreadyScheduledException(delivery);
         }
 
         if (date.get(GregorianCalendar.HOUR_OF_DAY) < STARTING_HOUR || date.get(GregorianCalendar.HOUR_OF_DAY) >= CLOSING_HOUR) {
@@ -180,7 +180,6 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
      *
      * @param date
      * @param delivery
-     * @throws OutOfWorkingHourTimeSlotException
      */
     public void createDeliveryTimeSlot(GregorianCalendar date, Delivery delivery, Drone drone)
             throws TimeslotUnvailableException {
