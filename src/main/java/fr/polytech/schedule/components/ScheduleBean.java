@@ -77,7 +77,7 @@ public class ScheduleBean implements DeliveryOrganizer, DeliveryScheduler {
                 return d;
             }
         }
-        String time = date.get(GregorianCalendar.HOUR) + ":" + date.get(GregorianCalendar.MINUTE);
+        String time = date.get(GregorianCalendar.HOUR_OF_DAY) + ":" + date.get(GregorianCalendar.MINUTE);
         throw new NoFreeDroneAtThisTimeSlotException(time);
     }
 
