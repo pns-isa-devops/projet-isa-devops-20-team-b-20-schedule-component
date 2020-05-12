@@ -37,7 +37,7 @@ pipeline{
                     steps {
                         sh "mvn versions:update-property -DallowSnapshots=true -Dproperty=versions.${params.DEPENDENCY}"
                         script {
-                            update = "\n - Component need fix before update : ${params.DEPENDENCY}\n\t${params.UPDATE_VERSION} -> ${VERSION}"
+                            update = "\n - Component need fix before update : ${params.DEPENDENCY}\n\t${VERSION} -> ${params.UPDATE_VERSION}"
                         }
                     }
                 }
